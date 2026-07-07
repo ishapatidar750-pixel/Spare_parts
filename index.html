@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLANT.CTRL — Spare Parts Demand Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg-deep:#F7F8FA;
+    --bg-panel:#FFFFFF;
+    --bg-panel-alt:#F1F3F7;
+    --bg-raised:#EAEDF3;
+    --line: rgba(18,21,28,0.09);
+    --line-strong: rgba(18,21,28,0.18);
+    --amber:#D97F1E;
+    --amber-dim: rgba(217,127,30,0.12);
+    --teal:#0E9E8C;
+    --teal-dim: rgba(14,158,140,0.12);
+    --red:#E0483C;
+    --red-dim: rgba(224,72,60,0.12);
+    --blue:#2F6FE0;
+    --blue-dim: rgba(47,111,224,0.12);
+    --text-primary:#12151C;
+    --text-muted:#5B6577;
+    --text-faint:#8791A3;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(217,127,30,0.05), transparent 60%),
+      radial-gradient(ellipse 900px 500px at 100% 0%, rgba(47,111,224,0.04), transparent 60%),
+      var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  ::selection{ background: var(--amber-dim); color: var(--amber); }
+
+  /* ---------- Ticker ---------- */
+  .ticker-wrap{
+    background: #12151C;
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 7px 0;
+    position: relative;
+  }
+  .ticker-wrap::before, .ticker-wrap::after{
+    content:"";
+    position:absolute; top:0; bottom:0; width:60px; z-index:2;
+  }
+  .ticker-wrap::before{ left:0; background: linear-gradient(90deg, #12151C, transparent); }
+  .ticker-wrap::after{ right:0; background: linear-gradient(270deg, #12151C, transparent); }
+  .ticker-track{
+    display:inline-flex;
+    align-items:center;
+    animation: scroll-left 38s linear infinite;
+  }
+  .ticker-track span{
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: var(--amber);
+    padding: 0 28px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .ticker-track span::before{
+    content:"";
+    width:5px; height:5px; border-radius:50%;
+    background: var(--teal);
+    box-shadow: 0 0 6px var(--teal);
+    display:inline-block;
+  }
+  @keyframes scroll-left{
+    0%{ transform: translateX(0); }
+    100%{ transform: translateX(-50%); }
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    padding: 28px 40px 20px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .brand-mark{
+    width:42px; height:42px;
+    border:1.5px solid var(--amber);
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono);
+    font-weight:700;
+    color: var(--amber);
+    font-size: 15px;
+    position:relative;
+    flex-shrink:0;
+  }
+  .brand-mark::after{
+    content:"";
+    position:absolute; inset:-5px;
+    border:1px solid rgba(255,162,58,0.25);
+    border-radius:11px;
+  }
+  .brand-text h1{
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight:600;
+    margin:0;
+    letter-spacing: 0.01em;
+  }
+  .brand-text p{
+    margin: 3px 0 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.03em;
+  }
+  .header-meta{
+    display:flex;
+    gap: 28px;
+    align-items:center;
+  }
+  .meta-item{ text-align:right; }
+  .meta-item .label{
+    font-size: 10px;
+    text-transform:uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+  }
+  .meta-item .value{
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--teal);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .status-dot{
+    display:inline-block; width:7px; height:7px; border-radius:50%;
+    background: var(--teal); box-shadow: 0 0 8px var(--teal);
+    animation: pulse 2s ease-in-out infinite;
+    margin-right:6px;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.4; }
+  }
+
+  /* ---------- Nav ---------- */
+  nav{
+    display:flex;
+    gap: 6px;
+    padding: 16px 40px 0;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .tab-btn{
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: 12px 18px;
+    cursor:pointer;
+    position:relative;
+    letter-spacing: 0.02em;
+    display:flex; align-items:center; gap:8px;
+    transition: color 0.15s ease;
+  }
+  .tab-btn .idx{
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-faint);
+    border:1px solid var(--line-strong);
+    border-radius:4px;
+    padding:1px 5px;
+  }
+  .tab-btn:hover{ color: var(--text-primary); }
+  .tab-btn.active{ color: var(--amber); }
+  .tab-btn.active .idx{ color:var(--amber); border-color: rgba(255,162,58,0.4); }
+  .tab-btn::after{
+    content:"";
+    position:absolute; left:18px; right:18px; bottom:-1px; height:2px;
+    background: transparent;
+  }
+  .tab-btn.active::after{ background: var(--amber); box-shadow: 0 0 8px rgba(255,162,58,0.5); }
+
+  main{ padding: 32px 40px 60px; max-width: 1400px; margin:0 auto; }
+  .view{ display:none; animation: fade-in 0.35s ease; }
+  .view.active{ display:block; }
+  @keyframes fade-in{ from{ opacity:0; transform: translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+
+  .view-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom: 22px; flex-wrap:wrap; gap:14px;
+  }
+  .view-head h2{
+    font-family: var(--font-display);
+    font-size: 24px;
+    margin:0 0 4px;
+    font-weight:600;
+  }
+  .view-head p{
+    margin:0; color: var(--text-muted); font-size:13px; max-width:560px;
+  }
+  .plant-filter{ display:flex; gap:6px; flex-wrap:wrap; }
+  .plant-btn{
+    font-family: var(--font-mono);
+    font-size:12px;
+    background: var(--bg-panel);
+    border:1px solid var(--line-strong);
+    color: var(--text-muted);
+    padding:7px 13px;
+    border-radius:6px;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .plant-btn:hover{ border-color: var(--amber); color: var(--text-primary); }
+  .plant-btn.active{
+    background: var(--amber-dim);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  /* ---------- Grid & cards ---------- */
+  .grid{ display:grid; gap:16px; }
+  .g-kpis{ grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
+  .g-2{ grid-template-columns: 1.3fr 1fr; }
+  .g-3{ grid-template-columns: repeat(3, 1fr); }
+  .g-1-2{ grid-template-columns: 1fr 1.6fr; }
+
+  .card{
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .card-tag{
+    position:absolute; top:14px; right:16px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+  }
+  .card h3{
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .card .sub{ font-size:11.5px; color: var(--text-faint); margin-bottom:14px; }
+
+  .kpi-card{ padding-bottom: 16px; }
+  .kpi-value{
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height:1;
+    margin-top: 6px;
+  }
+  .kpi-value.amber{ color: var(--amber); }
+  .kpi-value.teal{ color: var(--teal); }
+  .kpi-value.red{ color: var(--red); }
+  .kpi-delta{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin-top: 8px;
+    color: var(--text-muted);
+  }
+
+  canvas{ max-width: 100%; }
+
+  /* rack bar (signature element) */
+  .rack{
+    display:flex; flex-direction:column; gap:10px; margin-top: 6px;
+  }
+  .rack-row{ display:flex; align-items:center; gap:12px; }
+  .rack-label{
+    font-family: var(--font-mono); font-size:11.5px; width: 96px; flex-shrink:0; color: var(--text-muted);
+  }
+  .rack-track{
+    flex:1; height: 20px; background: var(--bg-panel-alt);
+    border-radius:4px; overflow:hidden; border:1px solid var(--line);
+    position:relative;
+  }
+  .rack-fill{
+    height:100%; border-radius: 3px 0 0 3px;
+    display:flex; align-items:center;
+    transition: width 1.1s cubic-bezier(.2,.8,.2,1);
+  }
+  .rack-fill span{
+    font-family: var(--font-mono); font-size:10.5px; color:#05070B; font-weight:700;
+    margin-left:8px; white-space:nowrap;
+  }
+  .rack-count{ font-family: var(--font-mono); font-size:11.5px; color:var(--text-faint); width:64px; text-align:right; flex-shrink:0; }
+
+  table{ width:100%; border-collapse: collapse; font-size:12.5px; }
+  thead th{
+    text-align:left;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color: var(--text-faint);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line-strong);
+    cursor: pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  thead th:hover{ color: var(--amber); }
+  thead th.sorted{ color: var(--amber); }
+  tbody td{
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    white-space:nowrap;
+  }
+  tbody td.desc{
+    font-family: var(--font-body);
+    white-space:normal;
+    color: var(--text-muted);
+    max-width: 240px;
+  }
+  tbody tr:hover{ background: var(--bg-raised); }
+  .badge{
+    display:inline-block; padding:2px 8px; border-radius:20px;
+    font-size:10.5px; font-family:var(--font-mono); font-weight:600;
+  }
+  .badge.Lumpy{ background: var(--red-dim); color: var(--red); }
+  .badge.Erratic{ background: var(--blue-dim); color: var(--blue); }
+  .badge.Smooth{ background: var(--teal-dim); color: var(--teal); }
+  .badge.Intermittent{ background: var(--amber-dim); color: var(--amber); }
+  .badge.Naive{ background: rgba(140,150,170,0.15); color: var(--text-muted); }
+  .badge.Moving_Average{ background: var(--amber-dim); color: var(--amber); }
+
+  .search-row{ display:flex; gap:10px; margin-bottom:14px; }
+  .search-row input{
+    background: var(--bg-panel-alt);
+    border: 1px solid var(--line-strong);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    flex:1;
+    outline:none;
+  }
+  .search-row input:focus{ border-color: var(--amber); }
+  .search-row input::placeholder{ color: var(--text-faint); }
+  .table-scroll{ max-height: 420px; overflow-y:auto; }
+  .table-scroll::-webkit-scrollbar{ width:8px; }
+  .table-scroll::-webkit-scrollbar-thumb{ background: var(--line-strong); border-radius:4px; }
+
+  .insight{
+    display:flex; gap:10px; align-items:flex-start;
+    background: var(--amber-dim);
+    border: 1px solid rgba(255,162,58,0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    color: #FFC98A;
+    margin-top: 10px;
+    line-height:1.5;
+  }
+  .insight b{ color: var(--amber); }
+  .insight-icon{ font-family: var(--font-mono); color: var(--amber); font-weight:700; }
+
+  footer{
+    padding: 24px 40px 40px;
+    text-align:center;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing:0.03em;
+  }
+
+  @media (max-width: 900px){
+    .g-kpis, .g-2, .g-3, .g-1-2{ grid-template-columns: 1fr; }
+    header, nav, main{ padding-left:20px; padding-right:20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .ticker-track, .status-dot{ animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">PC</div>
+    <div class="brand-text">
+      <h1>PLANT.CTRL</h1>
+      <p>SPARE PARTS DEMAND &amp; FORECAST INTELLIGENCE</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-item">
+      <div class="label"><span class="status-dot"></span>Data Source</div>
+      <div class="value" style="color:var(--text-primary); font-size:12.5px;">Demand_Profile.xlsx</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Forecast Horizon</div>
+      <div class="value">MAY–OCT 2026</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Plants Tracked</div>
+      <div class="value" id="plantCountMeta">—</div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-view="executive"><span class="idx">01</span> Executive</button>
+  <button class="tab-btn" data-view="planning"><span class="idx">02</span> Planning</button>
+  <button class="tab-btn" data-view="accuracy"><span class="idx">03</span> Forecast Model</button>
+</nav>
+
+<main>
+  <!-- EXECUTIVE VIEW -->
+  <section class="view active" id="view-executive"></section>
+
+  <!-- PLANNING VIEW -->
+  <section class="view" id="view-planning"></section>
+
+  <!-- ACCURACY VIEW -->
+  <section class="view" id="view-accuracy"></section>
+</main>
+
+<footer>
+  PLANT.CTRL — built from Demand_Profile.xlsx (160,520 part-plant records) &amp; Final_Spare_Parts_Forecast.xlsx (82,417 forecasted parts) · Internal use
+</footer>
+
+<script id="dashboard-data" type="application/json">
+{"executive": {"total_records": 160520, "unique_parts": 54631, "eligible": 82417, "not_eligible": 78103, "total_forecast_units": 9744116.0, "class_counts": {"Lumpy": 122941, "No Demand": 17600, "Erratic": 13728, "Smooth": 6251}, "plant_counts": {"1110": 46135, "1152": 34769, "1153": 40713, "1155": 38903}, "plant_eligible": {"1110": 24441, "1152": 17157, "1153": 21428, "1155": 19391}, "monthly_totals": {"May-2026": 1624019.3, "Jun-2026": 1624019.3, "Jul-2026": 1624019.3, "Aug-2026": 1624019.3, "Sep-2026": 1624019.3, "Oct-2026": 1624019.3}, "top10": [{"Plant_Code": "1153", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Total_Forecast": 46840.0}, {"Plant_Code": "1110", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Total_Forecast": 39360.0}, {"Plant_Code": "1153", "Part No": "MF445086", "Material Description": "NUT SELF LOCKING 12", "Total_Forecast": 39330.0}, {"Plant_Code": "1155", "Part No": "IE332266", "Material Description": "SPARK PLUG-CNG RESISTIVE TYPE (M12)", "Total_Forecast": 32286.0}, {"Plant_Code": "1110", "Part No": "IB002922", "Material Description": "ELEMENT KIT OIL FILTER", "Total_Forecast": 31468.000000000004}, {"Plant_Code": "1155", "Part No": "IE459298", "Material Description": "SPARK PLUG CNG M10", "Total_Forecast": 30520.000000000004}, {"Plant_Code": "1110", "Part No": "ID301958", "Material Description": "FUEL STRAINER (MAV COWL)", "Total_Forecast": 30324.0}, {"Plant_Code": "1155", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Total_Forecast": 26680.000000000004}, {"Plant_Code": "1110", "Part No": "ID334315", "Material Description": "MAIN FILTER KIT", "Total_Forecast": 25392.0}, {"Plant_Code": "1153", "Part No": "IB999850", "Material Description": "FILTER SET E483", "Total_Forecast": 24630.0}]}, "plants": {"1110": {"total_parts": 46135, "eligible": 24441, "not_eligible": 21694, "class_counts": {"Lumpy": 34984, "No Demand": 5068, "Erratic": 4799, "Smooth": 1284}, "monthly_forecast": {"May-2026": 507921.6666666667, "Jun-2026": 507921.6666666667, "Jul-2026": 507921.6666666667, "Aug-2026": 507921.6666666667, "Sep-2026": 507921.6666666667, "Oct-2026": 507921.6666666667}, "avg_growth_rate": 176.67623214479246, "total_forecast": 3047530.0}, "1152": {"total_parts": 34769, "eligible": 17157, "not_eligible": 17612, "class_counts": {"Lumpy": 28267, "No Demand": 3430, "Erratic": 2657, "Smooth": 415}, "monthly_forecast": {"May-2026": 206493.33333333334, "Jun-2026": 206493.33333333334, "Jul-2026": 206493.33333333334, "Aug-2026": 206493.33333333334, "Sep-2026": 206493.33333333334, "Oct-2026": 206493.33333333334}, "avg_growth_rate": 297.9712890793523, "total_forecast": 1238960.0}, "1153": {"total_parts": 40713, "eligible": 21428, "not_eligible": 19285, "class_counts": {"Lumpy": 30184, "No Demand": 4525, "Erratic": 3295, "Smooth": 2709}, "monthly_forecast": {"May-2026": 534772.6666666667, "Jun-2026": 534772.6666666667, "Jul-2026": 534772.6666666667, "Aug-2026": 534772.6666666667, "Sep-2026": 534772.6666666667, "Oct-2026": 534772.6666666667}, "avg_growth_rate": 306.78159089234396, "total_forecast": 3208636.000000001}, "1155": {"total_parts": 38903, "eligible": 19391, "not_eligible": 19512, "class_counts": {"Lumpy": 29506, "No Demand": 4577, "Erratic": 2977, "Smooth": 1843}, "monthly_forecast": {"May-2026": 374831.6666666667, "Jun-2026": 374831.6666666667, "Jul-2026": 374831.6666666667, "Aug-2026": 374831.6666666667, "Sep-2026": 374831.6666666667, "Oct-2026": 374831.6666666667}, "avg_growth_rate": 343.2433056576614, "total_forecast": 2248990.0}}, "accuracy": {"best_model_counts": {"Moving_Average": 59032, "Naive": 23385}, "model_by_class": {"Erratic": {"Moving_Average": 7270, "Naive": 6458}, "Lumpy": {"Moving_Average": 48307, "Naive": 14131}, "Smooth": {"Moving_Average": 3455, "Naive": 2796}}, "model_by_plant": {"1110": {"Moving_Average": 17363, "Naive": 7078}, "1152": {"Moving_Average": 12531, "Naive": 4626}, "1153": {"Moving_Average": 15283, "Naive": 6145}, "1155": {"Moving_Average": 13855, "Naive": 5536}}, "eligible": 82417, "not_eligible": 78103, "total_records": 160520}, "explorer": [{"Plant_Code": "1153", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 7806.67, "Jun-2026": 7806.67, "Jul-2026": 7806.67, "Aug-2026": 7806.67, "Sep-2026": 7806.67, "Oct-2026": 7806.67, "Total_Forecast": 46840.0}, {"Plant_Code": "1110", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 6560.0, "Jun-2026": 6560.0, "Jul-2026": 6560.0, "Aug-2026": 6560.0, "Sep-2026": 6560.0, "Oct-2026": 6560.0, "Total_Forecast": 39360.0}, {"Plant_Code": "1153", "Part No": "MF445086", "Material Description": "NUT SELF LOCKING 12", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 6555.0, "Jun-2026": 6555.0, "Jul-2026": 6555.0, "Aug-2026": 6555.0, "Sep-2026": 6555.0, "Oct-2026": 6555.0, "Total_Forecast": 39330.0}, {"Plant_Code": "1155", "Part No": "IE332266", "Material Description": "SPARK PLUG-CNG RESISTIVE TYPE (M12)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 5381.0, "Jun-2026": 5381.0, "Jul-2026": 5381.0, "Aug-2026": 5381.0, "Sep-2026": 5381.0, "Oct-2026": 5381.0, "Total_Forecast": 32286.0}, {"Plant_Code": "1110", "Part No": "IB002922", "Material Description": "ELEMENT KIT OIL FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 5244.67, "Jun-2026": 5244.67, "Jul-2026": 5244.67, "Aug-2026": 5244.67, "Sep-2026": 5244.67, "Oct-2026": 5244.67, "Total_Forecast": 31468.0}, {"Plant_Code": "1155", "Part No": "IE459298", "Material Description": "SPARK PLUG CNG M10", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 5086.67, "Jun-2026": 5086.67, "Jul-2026": 5086.67, "Aug-2026": 5086.67, "Sep-2026": 5086.67, "Oct-2026": 5086.67, "Total_Forecast": 30520.0}, {"Plant_Code": "1110", "Part No": "ID301958", "Material Description": "FUEL STRAINER (MAV COWL)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 5054.0, "Jun-2026": 5054.0, "Jul-2026": 5054.0, "Aug-2026": 5054.0, "Sep-2026": 5054.0, "Oct-2026": 5054.0, "Total_Forecast": 30324.0}, {"Plant_Code": "1155", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 4446.67, "Jun-2026": 4446.67, "Jul-2026": 4446.67, "Aug-2026": 4446.67, "Sep-2026": 4446.67, "Oct-2026": 4446.67, "Total_Forecast": 26680.0}, {"Plant_Code": "1110", "Part No": "ID334315", "Material Description": "MAIN FILTER KIT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 4232.0, "Jun-2026": 4232.0, "Jul-2026": 4232.0, "Aug-2026": 4232.0, "Sep-2026": 4232.0, "Oct-2026": 4232.0, "Total_Forecast": 25392.0}, {"Plant_Code": "1153", "Part No": "IB999850", "Material Description": "FILTER SET E483", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 4105.0, "Jun-2026": 4105.0, "Jul-2026": 4105.0, "Aug-2026": 4105.0, "Sep-2026": 4105.0, "Oct-2026": 4105.0, "Total_Forecast": 24630.0}, {"Plant_Code": "1110", "Part No": "ID309786", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 3855.0, "Jun-2026": 3855.0, "Jul-2026": 3855.0, "Aug-2026": 3855.0, "Sep-2026": 3855.0, "Oct-2026": 3855.0, "Total_Forecast": 23130.0}, {"Plant_Code": "1110", "Part No": "IE314595", "Material Description": "CABLE TIE - HARNESS CLIPS", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 3752.33, "Jun-2026": 3752.33, "Jul-2026": 3752.33, "Aug-2026": 3752.33, "Sep-2026": 3752.33, "Oct-2026": 3752.33, "Total_Forecast": 22514.0}, {"Plant_Code": "1155", "Part No": "IE321872", "Material Description": "SPARK PLUG-CNG RESISTIVE TYPE", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 3591.0, "Jun-2026": 3591.0, "Jul-2026": 3591.0, "Aug-2026": 3591.0, "Sep-2026": 3591.0, "Oct-2026": 3591.0, "Total_Forecast": 21546.0}, {"Plant_Code": "1153", "Part No": "MB344408", "Material Description": "CLIP TRIM", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 3560.0, "Jun-2026": 3560.0, "Jul-2026": 3560.0, "Aug-2026": 3560.0, "Sep-2026": 3560.0, "Oct-2026": 3560.0, "Total_Forecast": 21360.0}, {"Plant_Code": "1110", "Part No": "ID201024", "Material Description": "BY PASS FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 3544.67, "Jun-2026": 3544.67, "Jul-2026": 3544.67, "Aug-2026": 3544.67, "Sep-2026": 3544.67, "Oct-2026": 3544.67, "Total_Forecast": 21268.0}, {"Plant_Code": "1155", "Part No": "ID309786", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 3501.33, "Jun-2026": 3501.33, "Jul-2026": 3501.33, "Aug-2026": 3501.33, "Sep-2026": 3501.33, "Oct-2026": 3501.33, "Total_Forecast": 21008.0}, {"Plant_Code": "1155", "Part No": "IB002922", "Material Description": "ELEMENT KIT OIL FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 3387.67, "Jun-2026": 3387.67, "Jul-2026": 3387.67, "Aug-2026": 3387.67, "Sep-2026": 3387.67, "Oct-2026": 3387.67, "Total_Forecast": 20326.0}, {"Plant_Code": "1153", "Part No": "ID329244", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 3360.0, "Jun-2026": 3360.0, "Jul-2026": 3360.0, "Aug-2026": 3360.0, "Sep-2026": 3360.0, "Oct-2026": 3360.0, "Total_Forecast": 20160.0}, {"Plant_Code": "1110", "Part No": "ID370657", "Material Description": "FILTER SPIN ON", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 3357.33, "Jun-2026": 3357.33, "Jul-2026": 3357.33, "Aug-2026": 3357.33, "Sep-2026": 3357.33, "Oct-2026": 3357.33, "Total_Forecast": 20144.0}, {"Plant_Code": "1110", "Part No": "ID377754", "Material Description": "FILTER INSERT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 3305.0, "Jun-2026": 3305.0, "Jul-2026": 3305.0, "Aug-2026": 3305.0, "Sep-2026": 3305.0, "Oct-2026": 3305.0, "Total_Forecast": 19830.0}, {"Plant_Code": "1155", "Part No": "ID378974", "Material Description": "combo oil filter", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 3282.67, "Jun-2026": 3282.67, "Jul-2026": 3282.67, "Aug-2026": 3282.67, "Sep-2026": 3282.67, "Oct-2026": 3282.67, "Total_Forecast": 19696.0}, {"Plant_Code": "1110", "Part No": "ID378974", "Material Description": "combo oil filter", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 3269.0, "Jun-2026": 3269.0, "Jul-2026": 3269.0, "Aug-2026": 3269.0, "Sep-2026": 3269.0, "Oct-2026": 3269.0, "Total_Forecast": 19614.0}, {"Plant_Code": "1155", "Part No": "IE314595", "Material Description": "CABLE TIE - HARNESS CLIPS", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 3229.0, "Jun-2026": 3229.0, "Jul-2026": 3229.0, "Aug-2026": 3229.0, "Sep-2026": 3229.0, "Oct-2026": 3229.0, "Total_Forecast": 19374.0}, {"Plant_Code": "1153", "Part No": "ID334315", "Material Description": "MAIN FILTER KIT", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 3077.67, "Jun-2026": 3077.67, "Jul-2026": 3077.67, "Aug-2026": 3077.67, "Sep-2026": 3077.67, "Oct-2026": 3077.67, "Total_Forecast": 18466.0}, {"Plant_Code": "1153", "Part No": "MF434104", "Material Description": "NUT FL. M8X1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 3030.0, "Jun-2026": 3030.0, "Jul-2026": 3030.0, "Aug-2026": 3030.0, "Sep-2026": 3030.0, "Oct-2026": 3030.0, "Total_Forecast": 18180.0}, {"Plant_Code": "1153", "Part No": "ID309786", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2989.33, "Jun-2026": 2989.33, "Jul-2026": 2989.33, "Aug-2026": 2989.33, "Sep-2026": 2989.33, "Oct-2026": 2989.33, "Total_Forecast": 17936.0}, {"Plant_Code": "1153", "Part No": "MF434105", "Material Description": "NUT FL. M10x1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2940.0, "Jun-2026": 2940.0, "Jul-2026": 2940.0, "Aug-2026": 2940.0, "Sep-2026": 2940.0, "Oct-2026": 2940.0, "Total_Forecast": 17640.0}, {"Plant_Code": "1155", "Part No": "ID334315", "Material Description": "MAIN FILTER KIT", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2878.33, "Jun-2026": 2878.33, "Jul-2026": 2878.33, "Aug-2026": 2878.33, "Sep-2026": 2878.33, "Oct-2026": 2878.33, "Total_Forecast": 17270.0}, {"Plant_Code": "1152", "Part No": "IA461216", "Material Description": "WHEEL NUT", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 2861.33, "Jun-2026": 2861.33, "Jul-2026": 2861.33, "Aug-2026": 2861.33, "Sep-2026": 2861.33, "Oct-2026": 2861.33, "Total_Forecast": 17168.0}, {"Plant_Code": "1153", "Part No": "IZ300494", "Material Description": "Rust Bust", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 2804.0, "Jun-2026": 2804.0, "Jul-2026": 2804.0, "Aug-2026": 2804.0, "Sep-2026": 2804.0, "Oct-2026": 2804.0, "Total_Forecast": 16824.0}, {"Plant_Code": "1155", "Part No": "MF434103", "Material Description": "FLANGE NUT M-6", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2800.0, "Jun-2026": 2800.0, "Jul-2026": 2800.0, "Aug-2026": 2800.0, "Sep-2026": 2800.0, "Oct-2026": 2800.0, "Total_Forecast": 16800.0}, {"Plant_Code": "1153", "Part No": "ID349948", "Material Description": "ROCKER ARM HLA  ASSY.", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 2756.0, "Jun-2026": 2756.0, "Jul-2026": 2756.0, "Aug-2026": 2756.0, "Sep-2026": 2756.0, "Oct-2026": 2756.0, "Total_Forecast": 16536.0}, {"Plant_Code": "1155", "Part No": "ID370657", "Material Description": "FILTER SPIN ON", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2742.33, "Jun-2026": 2742.33, "Jul-2026": 2742.33, "Aug-2026": 2742.33, "Sep-2026": 2742.33, "Oct-2026": 2742.33, "Total_Forecast": 16454.0}, {"Plant_Code": "1155", "Part No": "ID377754", "Material Description": "FILTER INSERT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2736.67, "Jun-2026": 2736.67, "Jul-2026": 2736.67, "Aug-2026": 2736.67, "Sep-2026": 2736.67, "Oct-2026": 2736.67, "Total_Forecast": 16420.0}, {"Plant_Code": "1110", "Part No": "IE332174", "Material Description": "Urea level sensor Filter", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2731.0, "Jun-2026": 2731.0, "Jul-2026": 2731.0, "Aug-2026": 2731.0, "Sep-2026": 2731.0, "Oct-2026": 2731.0, "Total_Forecast": 16386.0}, {"Plant_Code": "1110", "Part No": "ID332218", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2660.0, "Jun-2026": 2660.0, "Jul-2026": 2660.0, "Aug-2026": 2660.0, "Sep-2026": 2660.0, "Oct-2026": 2660.0, "Total_Forecast": 15960.0}, {"Plant_Code": "1110", "Part No": "ID329244", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2630.0, "Jun-2026": 2630.0, "Jul-2026": 2630.0, "Aug-2026": 2630.0, "Sep-2026": 2630.0, "Oct-2026": 2630.0, "Total_Forecast": 15780.0}, {"Plant_Code": "1153", "Part No": "ID376839", "Material Description": "SERVICE KIT OIL FILTER & O RING", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2621.33, "Jun-2026": 2621.33, "Jul-2026": 2621.33, "Aug-2026": 2621.33, "Sep-2026": 2621.33, "Oct-2026": 2621.33, "Total_Forecast": 15728.0}, {"Plant_Code": "1153", "Part No": "MF472103", "Material Description": "SPLIT PIN (5X45)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2620.0, "Jun-2026": 2620.0, "Jul-2026": 2620.0, "Aug-2026": 2620.0, "Sep-2026": 2620.0, "Oct-2026": 2620.0, "Total_Forecast": 15720.0}, {"Plant_Code": "1153", "Part No": "MF434103", "Material Description": "FLANGE NUT M-6", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2610.0, "Jun-2026": 2610.0, "Jul-2026": 2610.0, "Aug-2026": 2610.0, "Sep-2026": 2610.0, "Oct-2026": 2610.0, "Total_Forecast": 15660.0}, {"Plant_Code": "1153", "Part No": "IA461216", "Material Description": "WHEEL NUT", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 2602.67, "Jun-2026": 2602.67, "Jul-2026": 2602.67, "Aug-2026": 2602.67, "Sep-2026": 2602.67, "Oct-2026": 2602.67, "Total_Forecast": 15616.0}, {"Plant_Code": "1153", "Part No": "ME074696", "Material Description": "SEAL, VALVE STEM", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2592.0, "Jun-2026": 2592.0, "Jul-2026": 2592.0, "Aug-2026": 2592.0, "Sep-2026": 2592.0, "Oct-2026": 2592.0, "Total_Forecast": 15552.0}, {"Plant_Code": "1153", "Part No": "ID378974", "Material Description": "combo oil filter", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 2518.0, "Jun-2026": 2518.0, "Jul-2026": 2518.0, "Aug-2026": 2518.0, "Sep-2026": 2518.0, "Oct-2026": 2518.0, "Total_Forecast": 15108.0}, {"Plant_Code": "1152", "Part No": "IM300205", "Material Description": "EICHER PREMIUM COOLANT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2500.0, "Jun-2026": 2500.0, "Jul-2026": 2500.0, "Aug-2026": 2500.0, "Sep-2026": 2500.0, "Oct-2026": 2500.0, "Total_Forecast": 15000.0}, {"Plant_Code": "1110", "Part No": "IZ300494", "Material Description": "Rust Bust", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 2445.33, "Jun-2026": 2445.33, "Jul-2026": 2445.33, "Aug-2026": 2445.33, "Sep-2026": 2445.33, "Oct-2026": 2445.33, "Total_Forecast": 14672.0}, {"Plant_Code": "1110", "Part No": "MF434103", "Material Description": "FLANGE NUT M-6", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2426.0, "Jun-2026": 2426.0, "Jul-2026": 2426.0, "Aug-2026": 2426.0, "Sep-2026": 2426.0, "Oct-2026": 2426.0, "Total_Forecast": 14556.0}, {"Plant_Code": "1153", "Part No": "IA215577", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL (MCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2378.33, "Jun-2026": 2378.33, "Jul-2026": 2378.33, "Aug-2026": 2378.33, "Sep-2026": 2378.33, "Oct-2026": 2378.33, "Total_Forecast": 14270.0}, {"Plant_Code": "1110", "Part No": "ID364170", "Material Description": "FUEL WATER SEPARATOR", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2328.33, "Jun-2026": 2328.33, "Jul-2026": 2328.33, "Aug-2026": 2328.33, "Sep-2026": 2328.33, "Oct-2026": 2328.33, "Total_Forecast": 13970.0}, {"Plant_Code": "1110", "Part No": "ID349948", "Material Description": "ROCKER ARM HLA  ASSY.", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 2324.0, "Jun-2026": 2324.0, "Jul-2026": 2324.0, "Aug-2026": 2324.0, "Sep-2026": 2324.0, "Oct-2026": 2324.0, "Total_Forecast": 13944.0}, {"Plant_Code": "1110", "Part No": "IE312586", "Material Description": "TIE CLIP", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2286.67, "Jun-2026": 2286.67, "Jul-2026": 2286.67, "Aug-2026": 2286.67, "Sep-2026": 2286.67, "Oct-2026": 2286.67, "Total_Forecast": 13720.0}, {"Plant_Code": "1153", "Part No": "IZ300293", "Material Description": "Black Seal Gasket maker small", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2255.0, "Jun-2026": 2255.0, "Jul-2026": 2255.0, "Aug-2026": 2255.0, "Sep-2026": 2255.0, "Oct-2026": 2255.0, "Total_Forecast": 13530.0}, {"Plant_Code": "1153", "Part No": "IA329978", "Material Description": "PLASTIC CLIP.", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2220.0, "Jun-2026": 2220.0, "Jul-2026": 2220.0, "Aug-2026": 2220.0, "Sep-2026": 2220.0, "Oct-2026": 2220.0, "Total_Forecast": 13320.0}, {"Plant_Code": "1153", "Part No": "IE314595", "Material Description": "CABLE TIE - HARNESS CLIPS", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2220.0, "Jun-2026": 2220.0, "Jul-2026": 2220.0, "Aug-2026": 2220.0, "Sep-2026": 2220.0, "Oct-2026": 2220.0, "Total_Forecast": 13320.0}, {"Plant_Code": "1110", "Part No": "IE332266", "Material Description": "SPARK PLUG-CNG RESISTIVE TYPE (M12)", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 2212.67, "Jun-2026": 2212.67, "Jul-2026": 2212.67, "Aug-2026": 2212.67, "Sep-2026": 2212.67, "Oct-2026": 2212.67, "Total_Forecast": 13276.0}, {"Plant_Code": "1153", "Part No": "MB486038", "Material Description": "BALL JOINT G/SHF CONT.LINK", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2210.0, "Jun-2026": 2210.0, "Jul-2026": 2210.0, "Aug-2026": 2210.0, "Sep-2026": 2210.0, "Oct-2026": 2210.0, "Total_Forecast": 13260.0}, {"Plant_Code": "1110", "Part No": "IA461216", "Material Description": "WHEEL NUT", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 2196.0, "Jun-2026": 2196.0, "Jul-2026": 2196.0, "Aug-2026": 2196.0, "Sep-2026": 2196.0, "Oct-2026": 2196.0, "Total_Forecast": 13176.0}, {"Plant_Code": "1155", "Part No": "IB001883", "Material Description": "949902 CABLE BAND (L-150)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2171.0, "Jun-2026": 2171.0, "Jul-2026": 2171.0, "Aug-2026": 2171.0, "Sep-2026": 2171.0, "Oct-2026": 2171.0, "Total_Forecast": 13026.0}, {"Plant_Code": "1153", "Part No": "MS660164", "Material Description": "HOSE CLIP (13.1)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2150.0, "Jun-2026": 2150.0, "Jul-2026": 2150.0, "Aug-2026": 2150.0, "Sep-2026": 2150.0, "Oct-2026": 2150.0, "Total_Forecast": 12900.0}, {"Plant_Code": "1153", "Part No": "ID362270", "Material Description": "FILTER ELEMENT WITH O-RING MAIN FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2137.67, "Jun-2026": 2137.67, "Jul-2026": 2137.67, "Aug-2026": 2137.67, "Sep-2026": 2137.67, "Oct-2026": 2137.67, "Total_Forecast": 12826.0}, {"Plant_Code": "1153", "Part No": "ID362276", "Material Description": "FILTER ELEMENT WITH O-RING PRE FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2132.0, "Jun-2026": 2132.0, "Jul-2026": 2132.0, "Aug-2026": 2132.0, "Sep-2026": 2132.0, "Oct-2026": 2132.0, "Total_Forecast": 12792.0}, {"Plant_Code": "1153", "Part No": "MF140225", "Material Description": "BOLT M8x1.25x20", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2130.0, "Jun-2026": 2130.0, "Jul-2026": 2130.0, "Aug-2026": 2130.0, "Sep-2026": 2130.0, "Oct-2026": 2130.0, "Total_Forecast": 12780.0}, {"Plant_Code": "1110", "Part No": "ID376839", "Material Description": "SERVICE KIT OIL FILTER & O RING", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 2116.67, "Jun-2026": 2116.67, "Jul-2026": 2116.67, "Aug-2026": 2116.67, "Sep-2026": 2116.67, "Oct-2026": 2116.67, "Total_Forecast": 12700.0}, {"Plant_Code": "1153", "Part No": "MF472127", "Material Description": "SPLIT PIN", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2070.0, "Jun-2026": 2070.0, "Jul-2026": 2070.0, "Aug-2026": 2070.0, "Sep-2026": 2070.0, "Oct-2026": 2070.0, "Total_Forecast": 12420.0}, {"Plant_Code": "1153", "Part No": "ME013536", "Material Description": "GASKET EXHAUST MANIFOLD", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 2010.67, "Jun-2026": 2010.67, "Jul-2026": 2010.67, "Aug-2026": 2010.67, "Sep-2026": 2010.67, "Oct-2026": 2010.67, "Total_Forecast": 12064.0}, {"Plant_Code": "1110", "Part No": "MF434104", "Material Description": "NUT FL. M8X1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 2010.0, "Jun-2026": 2010.0, "Jul-2026": 2010.0, "Aug-2026": 2010.0, "Sep-2026": 2010.0, "Oct-2026": 2010.0, "Total_Forecast": 12060.0}, {"Plant_Code": "1153", "Part No": "MF660064", "Material Description": "GASKET(12)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1986.67, "Jun-2026": 1986.67, "Jul-2026": 1986.67, "Aug-2026": 1986.67, "Sep-2026": 1986.67, "Oct-2026": 1986.67, "Total_Forecast": 11920.0}, {"Plant_Code": "1110", "Part No": "IC307655", "Material Description": "BUTTON TYPE CABLEBAND", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1962.33, "Jun-2026": 1962.33, "Jul-2026": 1962.33, "Aug-2026": 1962.33, "Sep-2026": 1962.33, "Oct-2026": 1962.33, "Total_Forecast": 11774.0}, {"Plant_Code": "1153", "Part No": "MF660063", "Material Description": "GASKET (10)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1953.33, "Jun-2026": 1953.33, "Jul-2026": 1953.33, "Aug-2026": 1953.33, "Sep-2026": 1953.33, "Oct-2026": 1953.33, "Total_Forecast": 11720.0}, {"Plant_Code": "1155", "Part No": "IZ300494", "Material Description": "Rust Bust", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1951.0, "Jun-2026": 1951.0, "Jul-2026": 1951.0, "Aug-2026": 1951.0, "Sep-2026": 1951.0, "Oct-2026": 1951.0, "Total_Forecast": 11706.0}, {"Plant_Code": "1110", "Part No": "MF660064", "Material Description": "GASKET(12)", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1920.0, "Jun-2026": 1920.0, "Jul-2026": 1920.0, "Aug-2026": 1920.0, "Sep-2026": 1920.0, "Oct-2026": 1920.0, "Total_Forecast": 11520.0}, {"Plant_Code": "1110", "Part No": "MF434105", "Material Description": "NUT FL. M10x1.25", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1910.0, "Jun-2026": 1910.0, "Jul-2026": 1910.0, "Aug-2026": 1910.0, "Sep-2026": 1910.0, "Oct-2026": 1910.0, "Total_Forecast": 11460.0}, {"Plant_Code": "1155", "Part No": "ID376839", "Material Description": "SERVICE KIT OIL FILTER & O RING", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1869.0, "Jun-2026": 1869.0, "Jul-2026": 1869.0, "Aug-2026": 1869.0, "Sep-2026": 1869.0, "Oct-2026": 1869.0, "Total_Forecast": 11214.0}, {"Plant_Code": "1153", "Part No": "IA208182", "Material Description": "CAP, FUEL TANK (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1850.0, "Jun-2026": 1850.0, "Jul-2026": 1850.0, "Aug-2026": 1850.0, "Sep-2026": 1850.0, "Oct-2026": 1850.0, "Total_Forecast": 11100.0}, {"Plant_Code": "1155", "Part No": "IE332174", "Material Description": "Urea level sensor Filter", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1822.67, "Jun-2026": 1822.67, "Jul-2026": 1822.67, "Aug-2026": 1822.67, "Sep-2026": 1822.67, "Oct-2026": 1822.67, "Total_Forecast": 10936.0}, {"Plant_Code": "1110", "Part No": "ID362276", "Material Description": "FILTER ELEMENT WITH O-RING PRE FILTER", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1817.33, "Jun-2026": 1817.33, "Jul-2026": 1817.33, "Aug-2026": 1817.33, "Sep-2026": 1817.33, "Oct-2026": 1817.33, "Total_Forecast": 10904.0}, {"Plant_Code": "1155", "Part No": "ID329244", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1790.0, "Jun-2026": 1790.0, "Jul-2026": 1790.0, "Aug-2026": 1790.0, "Sep-2026": 1790.0, "Oct-2026": 1790.0, "Total_Forecast": 10740.0}, {"Plant_Code": "1153", "Part No": "ID329241", "Material Description": "SPRING RETAINER COTTER", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1770.0, "Jun-2026": 1770.0, "Jul-2026": 1770.0, "Aug-2026": 1770.0, "Sep-2026": 1770.0, "Oct-2026": 1770.0, "Total_Forecast": 10620.0}, {"Plant_Code": "1153", "Part No": "MB394519", "Material Description": "KNOB INSIDE LOCK", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1766.67, "Jun-2026": 1766.67, "Jul-2026": 1766.67, "Aug-2026": 1766.67, "Sep-2026": 1766.67, "Oct-2026": 1766.67, "Total_Forecast": 10600.0}, {"Plant_Code": "1110", "Part No": "ID362270", "Material Description": "FILTER ELEMENT WITH O-RING MAIN FILTER", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1740.0, "Jun-2026": 1740.0, "Jul-2026": 1740.0, "Aug-2026": 1740.0, "Sep-2026": 1740.0, "Oct-2026": 1740.0, "Total_Forecast": 10440.0}, {"Plant_Code": "1153", "Part No": "IA215142", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1735.33, "Jun-2026": 1735.33, "Jul-2026": 1735.33, "Aug-2026": 1735.33, "Sep-2026": 1735.33, "Oct-2026": 1735.33, "Total_Forecast": 10412.0}, {"Plant_Code": "1110", "Part No": "IZ300293", "Material Description": "Black Seal Gasket maker small", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1719.0, "Jun-2026": 1719.0, "Jul-2026": 1719.0, "Aug-2026": 1719.0, "Sep-2026": 1719.0, "Oct-2026": 1719.0, "Total_Forecast": 10314.0}, {"Plant_Code": "1155", "Part No": "IC307655", "Material Description": "BUTTON TYPE CABLEBAND", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1699.0, "Jun-2026": 1699.0, "Jul-2026": 1699.0, "Aug-2026": 1699.0, "Sep-2026": 1699.0, "Oct-2026": 1699.0, "Total_Forecast": 10194.0}, {"Plant_Code": "1152", "Part No": "IB002922", "Material Description": "ELEMENT KIT OIL FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1694.0, "Jun-2026": 1694.0, "Jul-2026": 1694.0, "Aug-2026": 1694.0, "Sep-2026": 1694.0, "Oct-2026": 1694.0, "Total_Forecast": 10164.0}, {"Plant_Code": "1155", "Part No": "ID362276", "Material Description": "FILTER ELEMENT WITH O-RING PRE FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1690.0, "Jun-2026": 1690.0, "Jul-2026": 1690.0, "Aug-2026": 1690.0, "Sep-2026": 1690.0, "Oct-2026": 1690.0, "Total_Forecast": 10140.0}, {"Plant_Code": "1153", "Part No": "IB999501", "Material Description": "GEAR BOX BUSHING KIT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1688.0, "Jun-2026": 1688.0, "Jul-2026": 1688.0, "Aug-2026": 1688.0, "Sep-2026": 1688.0, "Oct-2026": 1688.0, "Total_Forecast": 10128.0}, {"Plant_Code": "1110", "Part No": "MF472127", "Material Description": "SPLIT PIN", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1685.0, "Jun-2026": 1685.0, "Jul-2026": 1685.0, "Aug-2026": 1685.0, "Sep-2026": 1685.0, "Oct-2026": 1685.0, "Total_Forecast": 10110.0}, {"Plant_Code": "1155", "Part No": "IA329978", "Material Description": "PLASTIC CLIP.", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1680.0, "Jun-2026": 1680.0, "Jul-2026": 1680.0, "Aug-2026": 1680.0, "Sep-2026": 1680.0, "Oct-2026": 1680.0, "Total_Forecast": 10080.0}, {"Plant_Code": "1153", "Part No": "ME020244", "Material Description": "CAP VALVE GEAR TRAIN", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1672.0, "Jun-2026": 1672.0, "Jul-2026": 1672.0, "Aug-2026": 1672.0, "Sep-2026": 1672.0, "Oct-2026": 1672.0, "Total_Forecast": 10032.0}, {"Plant_Code": "1153", "Part No": "ID205077", "Material Description": "CABLE ACCELERATOR (1090 K CNG)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1666.67, "Jun-2026": 1666.67, "Jul-2026": 1666.67, "Aug-2026": 1666.67, "Sep-2026": 1666.67, "Oct-2026": 1666.67, "Total_Forecast": 10000.0}, {"Plant_Code": "1153", "Part No": "IB002922", "Material Description": "ELEMENT KIT OIL FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1661.67, "Jun-2026": 1661.67, "Jul-2026": 1661.67, "Aug-2026": 1661.67, "Sep-2026": 1661.67, "Oct-2026": 1661.67, "Total_Forecast": 9970.0}, {"Plant_Code": "1155", "Part No": "ID362270", "Material Description": "FILTER ELEMENT WITH O-RING MAIN FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1655.33, "Jun-2026": 1655.33, "Jul-2026": 1655.33, "Aug-2026": 1655.33, "Sep-2026": 1655.33, "Oct-2026": 1655.33, "Total_Forecast": 9932.0}, {"Plant_Code": "1110", "Part No": "ID332219", "Material Description": "SECONDARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1607.33, "Jun-2026": 1607.33, "Jul-2026": 1607.33, "Aug-2026": 1607.33, "Sep-2026": 1607.33, "Oct-2026": 1607.33, "Total_Forecast": 9644.0}, {"Plant_Code": "1153", "Part No": "ME603242", "Material Description": "ME603242, RING SYNCHRONIZER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1602.33, "Jun-2026": 1602.33, "Jul-2026": 1602.33, "Aug-2026": 1602.33, "Sep-2026": 1602.33, "Oct-2026": 1602.33, "Total_Forecast": 9614.0}, {"Plant_Code": "1153", "Part No": "ID201024", "Material Description": "BY PASS FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1601.33, "Jun-2026": 1601.33, "Jul-2026": 1601.33, "Aug-2026": 1601.33, "Sep-2026": 1601.33, "Oct-2026": 1601.33, "Total_Forecast": 9608.0}, {"Plant_Code": "1153", "Part No": "ID201751", "Material Description": "NUT FLANGE SELF LOCKING (M8X1.25) -TC", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1590.0, "Jun-2026": 1590.0, "Jul-2026": 1590.0, "Aug-2026": 1590.0, "Sep-2026": 1590.0, "Oct-2026": 1590.0, "Total_Forecast": 9540.0}, {"Plant_Code": "1153", "Part No": "MH001715", "Material Description": "MH001715, BOLT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1590.0, "Jun-2026": 1590.0, "Jul-2026": 1590.0, "Aug-2026": 1590.0, "Sep-2026": 1590.0, "Oct-2026": 1590.0, "Total_Forecast": 9540.0}, {"Plant_Code": "1110", "Part No": "ID304913", "Material Description": "NUT SELF LOCKING M12x1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1580.0, "Jun-2026": 1580.0, "Jul-2026": 1580.0, "Aug-2026": 1580.0, "Sep-2026": 1580.0, "Oct-2026": 1580.0, "Total_Forecast": 9480.0}, {"Plant_Code": "1153", "Part No": "MS660163", "Material Description": "HOSE CLIP (11.6)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1580.0, "Jun-2026": 1580.0, "Jul-2026": 1580.0, "Aug-2026": 1580.0, "Sep-2026": 1580.0, "Oct-2026": 1580.0, "Total_Forecast": 9480.0}, {"Plant_Code": "1155", "Part No": "MF472127", "Material Description": "SPLIT PIN", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1580.0, "Jun-2026": 1580.0, "Jul-2026": 1580.0, "Aug-2026": 1580.0, "Sep-2026": 1580.0, "Oct-2026": 1580.0, "Total_Forecast": 9480.0}, {"Plant_Code": "1110", "Part No": "IA215577", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL (MCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1579.0, "Jun-2026": 1579.0, "Jul-2026": 1579.0, "Aug-2026": 1579.0, "Sep-2026": 1579.0, "Oct-2026": 1579.0, "Total_Forecast": 9474.0}, {"Plant_Code": "1152", "Part No": "ID201024", "Material Description": "BY PASS FILTER", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1571.0, "Jun-2026": 1571.0, "Jul-2026": 1571.0, "Aug-2026": 1571.0, "Sep-2026": 1571.0, "Oct-2026": 1571.0, "Total_Forecast": 9426.0}, {"Plant_Code": "1153", "Part No": "MB293356", "Material Description": "HEX BOLT 12 X1.25 X 30  (10", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1570.0, "Jun-2026": 1570.0, "Jul-2026": 1570.0, "Aug-2026": 1570.0, "Sep-2026": 1570.0, "Oct-2026": 1570.0, "Total_Forecast": 9420.0}, {"Plant_Code": "1153", "Part No": "IE332174", "Material Description": "Urea level sensor Filter", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1567.0, "Jun-2026": 1567.0, "Jul-2026": 1567.0, "Aug-2026": 1567.0, "Sep-2026": 1567.0, "Oct-2026": 1567.0, "Total_Forecast": 9402.0}, {"Plant_Code": "1155", "Part No": "MF434105", "Material Description": "NUT FL. M10x1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1560.0, "Jun-2026": 1560.0, "Jul-2026": 1560.0, "Aug-2026": 1560.0, "Sep-2026": 1560.0, "Oct-2026": 1560.0, "Total_Forecast": 9360.0}, {"Plant_Code": "1155", "Part No": "IM300893", "Material Description": "AIR FILTER SET LCV PRO SMALL N/M", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1556.33, "Jun-2026": 1556.33, "Jul-2026": 1556.33, "Aug-2026": 1556.33, "Sep-2026": 1556.33, "Oct-2026": 1556.33, "Total_Forecast": 9338.0}, {"Plant_Code": "1155", "Part No": "IA215577", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL (MCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1551.67, "Jun-2026": 1551.67, "Jul-2026": 1551.67, "Aug-2026": 1551.67, "Sep-2026": 1551.67, "Oct-2026": 1551.67, "Total_Forecast": 9310.0}, {"Plant_Code": "1153", "Part No": "ID202167", "Material Description": "CAP RADIATOR (TC)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1550.33, "Jun-2026": 1550.33, "Jul-2026": 1550.33, "Aug-2026": 1550.33, "Sep-2026": 1550.33, "Oct-2026": 1550.33, "Total_Forecast": 9302.0}, {"Plant_Code": "1153", "Part No": "ID370657", "Material Description": "FILTER SPIN ON", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1537.33, "Jun-2026": 1537.33, "Jul-2026": 1537.33, "Aug-2026": 1537.33, "Sep-2026": 1537.33, "Oct-2026": 1537.33, "Total_Forecast": 9224.0}, {"Plant_Code": "1155", "Part No": "IE453474", "Material Description": "BOOT ASSY", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1531.33, "Jun-2026": 1531.33, "Jul-2026": 1531.33, "Aug-2026": 1531.33, "Sep-2026": 1531.33, "Oct-2026": 1531.33, "Total_Forecast": 9188.0}, {"Plant_Code": "1155", "Part No": "ID309797", "Material Description": "INLET VALVE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1530.33, "Jun-2026": 1530.33, "Jul-2026": 1530.33, "Aug-2026": 1530.33, "Sep-2026": 1530.33, "Oct-2026": 1530.33, "Total_Forecast": 9182.0}, {"Plant_Code": "1152", "Part No": "IM301273L", "Material Description": "Eicher Life Max Coolant-VCS-2", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1520.67, "Jun-2026": 1520.67, "Jul-2026": 1520.67, "Aug-2026": 1520.67, "Sep-2026": 1520.67, "Oct-2026": 1520.67, "Total_Forecast": 9124.0}, {"Plant_Code": "1155", "Part No": "ID309798", "Material Description": "EXHAUST VALVE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1515.0, "Jun-2026": 1515.0, "Jul-2026": 1515.0, "Aug-2026": 1515.0, "Sep-2026": 1515.0, "Oct-2026": 1515.0, "Total_Forecast": 9090.0}, {"Plant_Code": "1110", "Part No": "IZ300294", "Material Description": "Black  Seal Gasket maker big", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 1509.0, "Jun-2026": 1509.0, "Jul-2026": 1509.0, "Aug-2026": 1509.0, "Sep-2026": 1509.0, "Oct-2026": 1509.0, "Total_Forecast": 9054.0}, {"Plant_Code": "1153", "Part No": "MS602013", "Material Description": "HOSE FUEL 6X110", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1500.0, "Jun-2026": 1500.0, "Jul-2026": 1500.0, "Aug-2026": 1500.0, "Sep-2026": 1500.0, "Oct-2026": 1500.0, "Total_Forecast": 9000.0}, {"Plant_Code": "1153", "Part No": "ID301958", "Material Description": "FUEL STRAINER (MAV COWL)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1495.67, "Jun-2026": 1495.67, "Jul-2026": 1495.67, "Aug-2026": 1495.67, "Sep-2026": 1495.67, "Oct-2026": 1495.67, "Total_Forecast": 8974.0}, {"Plant_Code": "1152", "Part No": "IE314595", "Material Description": "CABLE TIE - HARNESS CLIPS", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1490.0, "Jun-2026": 1490.0, "Jul-2026": 1490.0, "Aug-2026": 1490.0, "Sep-2026": 1490.0, "Oct-2026": 1490.0, "Total_Forecast": 8940.0}, {"Plant_Code": "1155", "Part No": "IA203416", "Material Description": "OIL SEAL HUB FRONT WHEEL (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1476.0, "Jun-2026": 1476.0, "Jul-2026": 1476.0, "Aug-2026": 1476.0, "Sep-2026": 1476.0, "Oct-2026": 1476.0, "Total_Forecast": 8856.0}, {"Plant_Code": "1153", "Part No": "IZ300294", "Material Description": "Black  Seal Gasket maker big", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1471.67, "Jun-2026": 1471.67, "Jul-2026": 1471.67, "Aug-2026": 1471.67, "Sep-2026": 1471.67, "Oct-2026": 1471.67, "Total_Forecast": 8830.0}, {"Plant_Code": "1155", "Part No": "MF434104", "Material Description": "NUT FL. M8X1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1470.0, "Jun-2026": 1470.0, "Jul-2026": 1470.0, "Aug-2026": 1470.0, "Sep-2026": 1470.0, "Oct-2026": 1470.0, "Total_Forecast": 8820.0}, {"Plant_Code": "1155", "Part No": "ID380825", "Material Description": "OIL MIST SEPARATOR SERVICE KIT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1466.33, "Jun-2026": 1466.33, "Jul-2026": 1466.33, "Aug-2026": 1466.33, "Sep-2026": 1466.33, "Oct-2026": 1466.33, "Total_Forecast": 8798.0}, {"Plant_Code": "1110", "Part No": "ID309797", "Material Description": "INLET VALVE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1459.67, "Jun-2026": 1459.67, "Jul-2026": 1459.67, "Aug-2026": 1459.67, "Sep-2026": 1459.67, "Oct-2026": 1459.67, "Total_Forecast": 8758.0}, {"Plant_Code": "1153", "Part No": "ID309812", "Material Description": "Valve Collet", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1446.67, "Jun-2026": 1446.67, "Jul-2026": 1446.67, "Aug-2026": 1446.67, "Sep-2026": 1446.67, "Oct-2026": 1446.67, "Total_Forecast": 8680.0}, {"Plant_Code": "1153", "Part No": "ID377754", "Material Description": "FILTER INSERT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1434.0, "Jun-2026": 1434.0, "Jul-2026": 1434.0, "Aug-2026": 1434.0, "Sep-2026": 1434.0, "Oct-2026": 1434.0, "Total_Forecast": 8604.0}, {"Plant_Code": "1110", "Part No": "IA215578", "Material Description": "OIL SEAL HUB REAR OUTER (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1433.0, "Jun-2026": 1433.0, "Jul-2026": 1433.0, "Aug-2026": 1433.0, "Sep-2026": 1433.0, "Oct-2026": 1433.0, "Total_Forecast": 8598.0}, {"Plant_Code": "1110", "Part No": "IA203086", "Material Description": "GASKET REAR AXLE SHAFT (HCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1420.0, "Jun-2026": 1420.0, "Jul-2026": 1420.0, "Aug-2026": 1420.0, "Sep-2026": 1420.0, "Oct-2026": 1420.0, "Total_Forecast": 8520.0}, {"Plant_Code": "1155", "Part No": "ID356562", "Material Description": "SEAL, VALVE STEM", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1416.0, "Jun-2026": 1416.0, "Jul-2026": 1416.0, "Aug-2026": 1416.0, "Sep-2026": 1416.0, "Oct-2026": 1416.0, "Total_Forecast": 8496.0}, {"Plant_Code": "1153", "Part No": "IC307655", "Material Description": "BUTTON TYPE CABLEBAND", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1410.0, "Jun-2026": 1410.0, "Jul-2026": 1410.0, "Aug-2026": 1410.0, "Sep-2026": 1410.0, "Oct-2026": 1410.0, "Total_Forecast": 8460.0}, {"Plant_Code": "1155", "Part No": "MF140225", "Material Description": "BOLT M8x1.25x20", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1410.0, "Jun-2026": 1410.0, "Jul-2026": 1410.0, "Aug-2026": 1410.0, "Sep-2026": 1410.0, "Oct-2026": 1410.0, "Total_Forecast": 8460.0}, {"Plant_Code": "1110", "Part No": "23613489", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1400.0, "Jun-2026": 1400.0, "Jul-2026": 1400.0, "Aug-2026": 1400.0, "Sep-2026": 1400.0, "Oct-2026": 1400.0, "Total_Forecast": 8400.0}, {"Plant_Code": "1110", "Part No": "23613512", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1400.0, "Jun-2026": 1400.0, "Jul-2026": 1400.0, "Aug-2026": 1400.0, "Sep-2026": 1400.0, "Oct-2026": 1400.0, "Total_Forecast": 8400.0}, {"Plant_Code": "1110", "Part No": "24057094", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1400.0, "Jun-2026": 1400.0, "Jul-2026": 1400.0, "Aug-2026": 1400.0, "Sep-2026": 1400.0, "Oct-2026": 1400.0, "Total_Forecast": 8400.0}, {"Plant_Code": "1153", "Part No": "IF000504", "Material Description": "OIL SEAL, FR HUB WHEEL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1399.67, "Jun-2026": 1399.67, "Jul-2026": 1399.67, "Aug-2026": 1399.67, "Sep-2026": 1399.67, "Oct-2026": 1399.67, "Total_Forecast": 8398.0}, {"Plant_Code": "1153", "Part No": "IA203086", "Material Description": "GASKET REAR AXLE SHAFT (HCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1396.67, "Jun-2026": 1396.67, "Jul-2026": 1396.67, "Aug-2026": 1396.67, "Sep-2026": 1396.67, "Oct-2026": 1396.67, "Total_Forecast": 8380.0}, {"Plant_Code": "1110", "Part No": "ID309798", "Material Description": "EXHAUST VALVE", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1390.0, "Jun-2026": 1390.0, "Jul-2026": 1390.0, "Aug-2026": 1390.0, "Sep-2026": 1390.0, "Oct-2026": 1390.0, "Total_Forecast": 8340.0}, {"Plant_Code": "1153", "Part No": "IA302148", "Material Description": "M14X1.5X40 BOLT FLANGE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1371.67, "Jun-2026": 1371.67, "Jul-2026": 1371.67, "Aug-2026": 1371.67, "Sep-2026": 1371.67, "Oct-2026": 1371.67, "Total_Forecast": 8230.0}, {"Plant_Code": "1155", "Part No": "IF000466", "Material Description": "OIL SEAL HUB REAR INNER (30.25)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1364.67, "Jun-2026": 1364.67, "Jul-2026": 1364.67, "Aug-2026": 1364.67, "Sep-2026": 1364.67, "Oct-2026": 1364.67, "Total_Forecast": 8188.0}, {"Plant_Code": "1152", "Part No": "IC303621", "Material Description": "M20 X 2.5 HEX. NUT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1360.0, "Jun-2026": 1360.0, "Jul-2026": 1360.0, "Aug-2026": 1360.0, "Sep-2026": 1360.0, "Oct-2026": 1360.0, "Total_Forecast": 8160.0}, {"Plant_Code": "1110", "Part No": "MF660063", "Material Description": "GASKET (10)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1353.33, "Jun-2026": 1353.33, "Jul-2026": 1353.33, "Aug-2026": 1353.33, "Sep-2026": 1353.33, "Oct-2026": 1353.33, "Total_Forecast": 8120.0}, {"Plant_Code": "1152", "Part No": "ID334315", "Material Description": "MAIN FILTER KIT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1353.0, "Jun-2026": 1353.0, "Jul-2026": 1353.0, "Aug-2026": 1353.0, "Sep-2026": 1353.0, "Oct-2026": 1353.0, "Total_Forecast": 8118.0}, {"Plant_Code": "1110", "Part No": "23613513", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1350.0, "Jun-2026": 1350.0, "Jul-2026": 1350.0, "Aug-2026": 1350.0, "Sep-2026": 1350.0, "Oct-2026": 1350.0, "Total_Forecast": 8100.0}, {"Plant_Code": "1155", "Part No": "ID201024", "Material Description": "BY PASS FILTER", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1326.0, "Jun-2026": 1326.0, "Jul-2026": 1326.0, "Aug-2026": 1326.0, "Sep-2026": 1326.0, "Oct-2026": 1326.0, "Total_Forecast": 7956.0}, {"Plant_Code": "1110", "Part No": "ME074696", "Material Description": "SEAL, VALVE STEM", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1312.0, "Jun-2026": 1312.0, "Jul-2026": 1312.0, "Aug-2026": 1312.0, "Sep-2026": 1312.0, "Oct-2026": 1312.0, "Total_Forecast": 7872.0}, {"Plant_Code": "1155", "Part No": "ID332218", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1303.33, "Jun-2026": 1303.33, "Jul-2026": 1303.33, "Aug-2026": 1303.33, "Sep-2026": 1303.33, "Oct-2026": 1303.33, "Total_Forecast": 7820.0}, {"Plant_Code": "1110", "Part No": "MF140225", "Material Description": "BOLT M8x1.25x20", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1283.0, "Jun-2026": 1283.0, "Jul-2026": 1283.0, "Aug-2026": 1283.0, "Sep-2026": 1283.0, "Oct-2026": 1283.0, "Total_Forecast": 7698.0}, {"Plant_Code": "1153", "Part No": "ID332218", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1278.0, "Jun-2026": 1278.0, "Jul-2026": 1278.0, "Aug-2026": 1278.0, "Sep-2026": 1278.0, "Oct-2026": 1278.0, "Total_Forecast": 7668.0}, {"Plant_Code": "1110", "Part No": "IF000466", "Material Description": "OIL SEAL HUB REAR INNER (30.25)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1259.67, "Jun-2026": 1259.67, "Jul-2026": 1259.67, "Aug-2026": 1259.67, "Sep-2026": 1259.67, "Oct-2026": 1259.67, "Total_Forecast": 7558.0}, {"Plant_Code": "1153", "Part No": "IM300893", "Material Description": "AIR FILTER SET LCV PRO SMALL N/M", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1257.67, "Jun-2026": 1257.67, "Jul-2026": 1257.67, "Aug-2026": 1257.67, "Sep-2026": 1257.67, "Oct-2026": 1257.67, "Total_Forecast": 7546.0}, {"Plant_Code": "1153", "Part No": "ID329237", "Material Description": "Inlet Valve", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1255.0, "Jun-2026": 1255.0, "Jul-2026": 1255.0, "Aug-2026": 1255.0, "Sep-2026": 1255.0, "Oct-2026": 1255.0, "Total_Forecast": 7530.0}, {"Plant_Code": "1110", "Part No": "ID356562", "Material Description": "SEAL, VALVE STEM", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1242.67, "Jun-2026": 1242.67, "Jul-2026": 1242.67, "Aug-2026": 1242.67, "Sep-2026": 1242.67, "Oct-2026": 1242.67, "Total_Forecast": 7456.0}, {"Plant_Code": "1153", "Part No": "IA203036", "Material Description": "GASKET,REAR AXLE SHAFT (LCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1236.67, "Jun-2026": 1236.67, "Jul-2026": 1236.67, "Aug-2026": 1236.67, "Sep-2026": 1236.67, "Oct-2026": 1236.67, "Total_Forecast": 7420.0}, {"Plant_Code": "1155", "Part No": "2223466446", "Material Description": "FILTER INSERT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1230.0, "Jun-2026": 1230.0, "Jul-2026": 1230.0, "Aug-2026": 1230.0, "Sep-2026": 1230.0, "Oct-2026": 1230.0, "Total_Forecast": 7380.0}, {"Plant_Code": "1152", "Part No": "MF434103", "Material Description": "FLANGE NUT M-6", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1228.0, "Jun-2026": 1228.0, "Jul-2026": 1228.0, "Aug-2026": 1228.0, "Sep-2026": 1228.0, "Oct-2026": 1228.0, "Total_Forecast": 7368.0}, {"Plant_Code": "1153", "Part No": "IA215578", "Material Description": "OIL SEAL HUB REAR OUTER (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1225.0, "Jun-2026": 1225.0, "Jul-2026": 1225.0, "Aug-2026": 1225.0, "Sep-2026": 1225.0, "Oct-2026": 1225.0, "Total_Forecast": 7350.0}, {"Plant_Code": "1110", "Part No": "MB344408", "Material Description": "CLIP TRIM", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1213.33, "Jun-2026": 1213.33, "Jul-2026": 1213.33, "Aug-2026": 1213.33, "Sep-2026": 1213.33, "Oct-2026": 1213.33, "Total_Forecast": 7280.0}, {"Plant_Code": "1153", "Part No": "ME900712", "Material Description": "V- BELT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1204.33, "Jun-2026": 1204.33, "Jul-2026": 1204.33, "Aug-2026": 1204.33, "Sep-2026": 1204.33, "Oct-2026": 1204.33, "Total_Forecast": 7226.0}, {"Plant_Code": "1152", "Part No": "IZ300494", "Material Description": "Rust Bust", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 1203.0, "Jun-2026": 1203.0, "Jul-2026": 1203.0, "Aug-2026": 1203.0, "Sep-2026": 1203.0, "Oct-2026": 1203.0, "Total_Forecast": 7218.0}, {"Plant_Code": "1152", "Part No": "ID329244", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1200.0, "Jun-2026": 1200.0, "Jul-2026": 1200.0, "Aug-2026": 1200.0, "Sep-2026": 1200.0, "Oct-2026": 1200.0, "Total_Forecast": 7200.0}, {"Plant_Code": "1155", "Part No": "ID301958", "Material Description": "FUEL STRAINER (MAV COWL)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1198.0, "Jun-2026": 1198.0, "Jul-2026": 1198.0, "Aug-2026": 1198.0, "Sep-2026": 1198.0, "Oct-2026": 1198.0, "Total_Forecast": 7188.0}, {"Plant_Code": "1153", "Part No": "IA230267", "Material Description": "HUB BOLT KIT REAR 10.90", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1191.0, "Jun-2026": 1191.0, "Jul-2026": 1191.0, "Aug-2026": 1191.0, "Sep-2026": 1191.0, "Oct-2026": 1191.0, "Total_Forecast": 7146.0}, {"Plant_Code": "1155", "Part No": "IA308959", "Material Description": "Front Grill Clip LD", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1181.67, "Jun-2026": 1181.67, "Jul-2026": 1181.67, "Aug-2026": 1181.67, "Sep-2026": 1181.67, "Oct-2026": 1181.67, "Total_Forecast": 7090.0}, {"Plant_Code": "1152", "Part No": "ID309786", "Material Description": "VALVE STEM SEAL", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1176.0, "Jun-2026": 1176.0, "Jul-2026": 1176.0, "Aug-2026": 1176.0, "Sep-2026": 1176.0, "Oct-2026": 1176.0, "Total_Forecast": 7056.0}, {"Plant_Code": "1110", "Part No": "IA215142", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1172.0, "Jun-2026": 1172.0, "Jul-2026": 1172.0, "Aug-2026": 1172.0, "Sep-2026": 1172.0, "Oct-2026": 1172.0, "Total_Forecast": 7032.0}, {"Plant_Code": "1152", "Part No": "2223466446", "Material Description": "FILTER INSERT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1172.0, "Jun-2026": 1172.0, "Jul-2026": 1172.0, "Aug-2026": 1172.0, "Sep-2026": 1172.0, "Oct-2026": 1172.0, "Total_Forecast": 7032.0}, {"Plant_Code": "1110", "Part No": "IA329978", "Material Description": "PLASTIC CLIP.", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1170.0, "Jun-2026": 1170.0, "Jul-2026": 1170.0, "Aug-2026": 1170.0, "Sep-2026": 1170.0, "Oct-2026": 1170.0, "Total_Forecast": 7020.0}, {"Plant_Code": "1153", "Part No": "MF453045", "Material Description": "SCREW TAPPING 6X12", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1170.0, "Jun-2026": 1170.0, "Jul-2026": 1170.0, "Aug-2026": 1170.0, "Sep-2026": 1170.0, "Oct-2026": 1170.0, "Total_Forecast": 7020.0}, {"Plant_Code": "1153", "Part No": "IA205293", "Material Description": "SHOE RETURN SPRING (MCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1167.33, "Jun-2026": 1167.33, "Jul-2026": 1167.33, "Aug-2026": 1167.33, "Sep-2026": 1167.33, "Oct-2026": 1167.33, "Total_Forecast": 7004.0}, {"Plant_Code": "1155", "Part No": "ID332219", "Material Description": "SECONDARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1161.67, "Jun-2026": 1161.67, "Jul-2026": 1161.67, "Aug-2026": 1161.67, "Sep-2026": 1161.67, "Oct-2026": 1161.67, "Total_Forecast": 6970.0}, {"Plant_Code": "1155", "Part No": "IA203086", "Material Description": "GASKET REAR AXLE SHAFT (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1160.0, "Jun-2026": 1160.0, "Jul-2026": 1160.0, "Aug-2026": 1160.0, "Sep-2026": 1160.0, "Oct-2026": 1160.0, "Total_Forecast": 6960.0}, {"Plant_Code": "1153", "Part No": "ID202139", "Material Description": "BUSHING CON ROD FINISHED", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1152.0, "Jun-2026": 1152.0, "Jul-2026": 1152.0, "Aug-2026": 1152.0, "Sep-2026": 1152.0, "Oct-2026": 1152.0, "Total_Forecast": 6912.0}, {"Plant_Code": "1110", "Part No": "ID316950", "Material Description": "FILTER ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1144.33, "Jun-2026": 1144.33, "Jul-2026": 1144.33, "Aug-2026": 1144.33, "Sep-2026": 1144.33, "Oct-2026": 1144.33, "Total_Forecast": 6866.0}, {"Plant_Code": "1110", "Part No": "23473484", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1133.33, "Jun-2026": 1133.33, "Jul-2026": 1133.33, "Aug-2026": 1133.33, "Sep-2026": 1133.33, "Oct-2026": 1133.33, "Total_Forecast": 6800.0}, {"Plant_Code": "1110", "Part No": "IM300893", "Material Description": "AIR FILTER SET LCV PRO SMALL N/M", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1131.33, "Jun-2026": 1131.33, "Jul-2026": 1131.33, "Aug-2026": 1131.33, "Sep-2026": 1131.33, "Oct-2026": 1131.33, "Total_Forecast": 6788.0}, {"Plant_Code": "1110", "Part No": "IA203416", "Material Description": "OIL SEAL HUB FRONT WHEEL (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1126.0, "Jun-2026": 1126.0, "Jul-2026": 1126.0, "Aug-2026": 1126.0, "Sep-2026": 1126.0, "Oct-2026": 1126.0, "Total_Forecast": 6756.0}, {"Plant_Code": "1153", "Part No": "IA331391", "Material Description": "EICHER STICKER FOR DOOR (WHITE)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1123.33, "Jun-2026": 1123.33, "Jul-2026": 1123.33, "Aug-2026": 1123.33, "Sep-2026": 1123.33, "Oct-2026": 1123.33, "Total_Forecast": 6740.0}, {"Plant_Code": "1152", "Part No": "ID329241", "Material Description": "SPRING RETAINER COTTER", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1120.0, "Jun-2026": 1120.0, "Jul-2026": 1120.0, "Aug-2026": 1120.0, "Sep-2026": 1120.0, "Oct-2026": 1120.0, "Total_Forecast": 6720.0}, {"Plant_Code": "1152", "Part No": "ID349948", "Material Description": "ROCKER ARM HLA  ASSY.", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1120.0, "Jun-2026": 1120.0, "Jul-2026": 1120.0, "Aug-2026": 1120.0, "Sep-2026": 1120.0, "Oct-2026": 1120.0, "Total_Forecast": 6720.0}, {"Plant_Code": "1155", "Part No": "ID349948", "Material Description": "ROCKER ARM HLA  ASSY.", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1119.0, "Jun-2026": 1119.0, "Jul-2026": 1119.0, "Aug-2026": 1119.0, "Sep-2026": 1119.0, "Oct-2026": 1119.0, "Total_Forecast": 6714.0}, {"Plant_Code": "1155", "Part No": "IA461216", "Material Description": "WHEEL NUT", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1118.0, "Jun-2026": 1118.0, "Jul-2026": 1118.0, "Aug-2026": 1118.0, "Sep-2026": 1118.0, "Oct-2026": 1118.0, "Total_Forecast": 6708.0}, {"Plant_Code": "1152", "Part No": "ID376613", "Material Description": "FILTER ELEMENT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1113.0, "Jun-2026": 1113.0, "Jul-2026": 1113.0, "Aug-2026": 1113.0, "Sep-2026": 1113.0, "Oct-2026": 1113.0, "Total_Forecast": 6678.0}, {"Plant_Code": "1153", "Part No": "IB999725", "Material Description": "CLUTCH PEDAL REPAIR KIT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1103.67, "Jun-2026": 1103.67, "Jul-2026": 1103.67, "Aug-2026": 1103.67, "Sep-2026": 1103.67, "Oct-2026": 1103.67, "Total_Forecast": 6622.0}, {"Plant_Code": "1155", "Part No": "ID350638", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1103.33, "Jun-2026": 1103.33, "Jul-2026": 1103.33, "Aug-2026": 1103.33, "Sep-2026": 1103.33, "Oct-2026": 1103.33, "Total_Forecast": 6620.0}, {"Plant_Code": "1153", "Part No": "MB394511", "Material Description": "HANDLE ASSY DOOR O/S RH", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1095.0, "Jun-2026": 1095.0, "Jul-2026": 1095.0, "Aug-2026": 1095.0, "Sep-2026": 1095.0, "Oct-2026": 1095.0, "Total_Forecast": 6570.0}, {"Plant_Code": "1155", "Part No": "IB999850", "Material Description": "FILTER SET E483", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1095.0, "Jun-2026": 1095.0, "Jul-2026": 1095.0, "Aug-2026": 1095.0, "Sep-2026": 1095.0, "Oct-2026": 1095.0, "Total_Forecast": 6570.0}, {"Plant_Code": "1155", "Part No": "ID376613", "Material Description": "FILTER ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1092.0, "Jun-2026": 1092.0, "Jul-2026": 1092.0, "Aug-2026": 1092.0, "Sep-2026": 1092.0, "Oct-2026": 1092.0, "Total_Forecast": 6552.0}, {"Plant_Code": "1155", "Part No": "IA215578", "Material Description": "OIL SEAL HUB REAR OUTER (HCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1091.0, "Jun-2026": 1091.0, "Jul-2026": 1091.0, "Aug-2026": 1091.0, "Sep-2026": 1091.0, "Oct-2026": 1091.0, "Total_Forecast": 6546.0}, {"Plant_Code": "1153", "Part No": "ID329238", "Material Description": "Exhaust Valve", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1089.0, "Jun-2026": 1089.0, "Jul-2026": 1089.0, "Aug-2026": 1089.0, "Sep-2026": 1089.0, "Oct-2026": 1089.0, "Total_Forecast": 6534.0}, {"Plant_Code": "1110", "Part No": "MF472103", "Material Description": "SPLIT PIN (5X45)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1058.33, "Jun-2026": 1058.33, "Jul-2026": 1058.33, "Aug-2026": 1058.33, "Sep-2026": 1058.33, "Oct-2026": 1058.33, "Total_Forecast": 6350.0}, {"Plant_Code": "1153", "Part No": "ID332219", "Material Description": "SECONDARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1054.33, "Jun-2026": 1054.33, "Jul-2026": 1054.33, "Aug-2026": 1054.33, "Sep-2026": 1054.33, "Oct-2026": 1054.33, "Total_Forecast": 6326.0}, {"Plant_Code": "1153", "Part No": "IA203416", "Material Description": "OIL SEAL HUB FRONT WHEEL (HCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1054.0, "Jun-2026": 1054.0, "Jul-2026": 1054.0, "Aug-2026": 1054.0, "Sep-2026": 1054.0, "Oct-2026": 1054.0, "Total_Forecast": 6324.0}, {"Plant_Code": "1110", "Part No": "IA302148", "Material Description": "M14X1.5X40 BOLT FLANGE", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1045.0, "Jun-2026": 1045.0, "Jul-2026": 1045.0, "Aug-2026": 1045.0, "Sep-2026": 1045.0, "Oct-2026": 1045.0, "Total_Forecast": 6270.0}, {"Plant_Code": "1110", "Part No": "ID309812", "Material Description": "Valve Collet", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1043.33, "Jun-2026": 1043.33, "Jul-2026": 1043.33, "Aug-2026": 1043.33, "Sep-2026": 1043.33, "Oct-2026": 1043.33, "Total_Forecast": 6260.0}, {"Plant_Code": "1153", "Part No": "ME011227", "Material Description": "LOCK,VALVE SPRING RETAINER", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1040.0, "Jun-2026": 1040.0, "Jul-2026": 1040.0, "Aug-2026": 1040.0, "Sep-2026": 1040.0, "Oct-2026": 1040.0, "Total_Forecast": 6240.0}, {"Plant_Code": "1153", "Part No": "IA202651", "Material Description": "SEAL HUB REAR INNER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1028.0, "Jun-2026": 1028.0, "Jul-2026": 1028.0, "Aug-2026": 1028.0, "Sep-2026": 1028.0, "Oct-2026": 1028.0, "Total_Forecast": 6168.0}, {"Plant_Code": "1155", "Part No": "ID350639", "Material Description": "SECONDARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1022.33, "Jun-2026": 1022.33, "Jul-2026": 1022.33, "Aug-2026": 1022.33, "Sep-2026": 1022.33, "Oct-2026": 1022.33, "Total_Forecast": 6134.0}, {"Plant_Code": "1110", "Part No": "IA328687", "Material Description": "CLIP", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1020.0, "Jun-2026": 1020.0, "Jul-2026": 1020.0, "Aug-2026": 1020.0, "Sep-2026": 1020.0, "Oct-2026": 1020.0, "Total_Forecast": 6120.0}, {"Plant_Code": "1155", "Part No": "MF140005", "Material Description": "BOLT M6x1x16", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1020.0, "Jun-2026": 1020.0, "Jul-2026": 1020.0, "Aug-2026": 1020.0, "Sep-2026": 1020.0, "Oct-2026": 1020.0, "Total_Forecast": 6120.0}, {"Plant_Code": "1155", "Part No": "MF472103", "Material Description": "SPLIT PIN (5X45)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1020.0, "Jun-2026": 1020.0, "Jul-2026": 1020.0, "Aug-2026": 1020.0, "Sep-2026": 1020.0, "Oct-2026": 1020.0, "Total_Forecast": 6120.0}, {"Plant_Code": "1155", "Part No": "IM301273L", "Material Description": "Eicher Life Max Coolant-VCS-2", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1019.0, "Jun-2026": 1019.0, "Jul-2026": 1019.0, "Aug-2026": 1019.0, "Sep-2026": 1019.0, "Oct-2026": 1019.0, "Total_Forecast": 6114.0}, {"Plant_Code": "1153", "Part No": "IM300445", "Material Description": "STRICKER KIT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1014.0, "Jun-2026": 1014.0, "Jul-2026": 1014.0, "Aug-2026": 1014.0, "Sep-2026": 1014.0, "Oct-2026": 1014.0, "Total_Forecast": 6084.0}, {"Plant_Code": "1153", "Part No": "MF140005", "Material Description": "BOLT M6x1x16", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1013.33, "Jun-2026": 1013.33, "Jul-2026": 1013.33, "Aug-2026": 1013.33, "Sep-2026": 1013.33, "Oct-2026": 1013.33, "Total_Forecast": 6080.0}, {"Plant_Code": "1110", "Part No": "IA203036", "Material Description": "GASKET,REAR AXLE SHAFT (LCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1010.0, "Jun-2026": 1010.0, "Jul-2026": 1010.0, "Aug-2026": 1010.0, "Sep-2026": 1010.0, "Oct-2026": 1010.0, "Total_Forecast": 6060.0}, {"Plant_Code": "1110", "Part No": "IA450494", "Material Description": "CHRISTMAS CLIP (PASA )", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 1010.0, "Jun-2026": 1010.0, "Jul-2026": 1010.0, "Aug-2026": 1010.0, "Sep-2026": 1010.0, "Oct-2026": 1010.0, "Total_Forecast": 6060.0}, {"Plant_Code": "1110", "Part No": "IF000504", "Material Description": "OIL SEAL, FR HUB WHEEL", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 1010.0, "Jun-2026": 1010.0, "Jul-2026": 1010.0, "Aug-2026": 1010.0, "Sep-2026": 1010.0, "Oct-2026": 1010.0, "Total_Forecast": 6060.0}, {"Plant_Code": "1153", "Part No": "IA340286", "Material Description": "OIL SEAL HUB REAR OUTER", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 1008.0, "Jun-2026": 1008.0, "Jul-2026": 1008.0, "Aug-2026": 1008.0, "Sep-2026": 1008.0, "Oct-2026": 1008.0, "Total_Forecast": 6048.0}, {"Plant_Code": "1110", "Part No": "ID202167", "Material Description": "CAP RADIATOR (TC)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1007.0, "Jun-2026": 1007.0, "Jul-2026": 1007.0, "Aug-2026": 1007.0, "Sep-2026": 1007.0, "Oct-2026": 1007.0, "Total_Forecast": 6042.0}, {"Plant_Code": "1110", "Part No": "MB394519", "Material Description": "KNOB INSIDE LOCK", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 1005.67, "Jun-2026": 1005.67, "Jul-2026": 1005.67, "Aug-2026": 1005.67, "Sep-2026": 1005.67, "Oct-2026": 1005.67, "Total_Forecast": 6034.0}, {"Plant_Code": "1110", "Part No": "ID321501", "Material Description": "GASKET TURBO ADAPTOR", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 1000.0, "Jun-2026": 1000.0, "Jul-2026": 1000.0, "Aug-2026": 1000.0, "Sep-2026": 1000.0, "Oct-2026": 1000.0, "Total_Forecast": 6000.0}, {"Plant_Code": "1155", "Part No": "IZ300288", "Material Description": "Grey Seal Gasket maker small", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 999.0, "Jun-2026": 999.0, "Jul-2026": 999.0, "Aug-2026": 999.0, "Sep-2026": 999.0, "Oct-2026": 999.0, "Total_Forecast": 5994.0}, {"Plant_Code": "1153", "Part No": "IF000466", "Material Description": "OIL SEAL HUB REAR INNER (30.25)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 998.0, "Jun-2026": 998.0, "Jul-2026": 998.0, "Aug-2026": 998.0, "Sep-2026": 998.0, "Oct-2026": 998.0, "Total_Forecast": 5988.0}, {"Plant_Code": "1153", "Part No": "IM301273L", "Material Description": "Eicher Life Max Coolant-VCS-2", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 992.0, "Jun-2026": 992.0, "Jul-2026": 992.0, "Aug-2026": 992.0, "Sep-2026": 992.0, "Oct-2026": 992.0, "Total_Forecast": 5952.0}, {"Plant_Code": "1153", "Part No": "IA450015", "Material Description": "OIL SEAL REAR INNER", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 991.0, "Jun-2026": 991.0, "Jul-2026": 991.0, "Aug-2026": 991.0, "Sep-2026": 991.0, "Oct-2026": 991.0, "Total_Forecast": 5946.0}, {"Plant_Code": "1153", "Part No": "MH035167", "Material Description": "GASKET, FUEL FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 990.0, "Jun-2026": 990.0, "Jul-2026": 990.0, "Aug-2026": 990.0, "Sep-2026": 990.0, "Oct-2026": 990.0, "Total_Forecast": 5940.0}, {"Plant_Code": "1153", "Part No": "ID200260", "Material Description": "GASKET COMPRESSOR (MCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 985.67, "Jun-2026": 985.67, "Jul-2026": 985.67, "Aug-2026": 985.67, "Sep-2026": 985.67, "Oct-2026": 985.67, "Total_Forecast": 5914.0}, {"Plant_Code": "1110", "Part No": "ID304877", "Material Description": "SPRING CLUTCH RELEASE", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 983.33, "Jun-2026": 983.33, "Jul-2026": 983.33, "Aug-2026": 983.33, "Sep-2026": 983.33, "Oct-2026": 983.33, "Total_Forecast": 5900.0}, {"Plant_Code": "1110", "Part No": "MF453045", "Material Description": "SCREW TAPPING 6X12", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 980.0, "Jun-2026": 980.0, "Jul-2026": 980.0, "Aug-2026": 980.0, "Sep-2026": 980.0, "Oct-2026": 980.0, "Total_Forecast": 5880.0}, {"Plant_Code": "1152", "Part No": "MF434104", "Material Description": "NUT FL. M8X1.25", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 980.0, "Jun-2026": 980.0, "Jul-2026": 980.0, "Aug-2026": 980.0, "Sep-2026": 980.0, "Oct-2026": 980.0, "Total_Forecast": 5880.0}, {"Plant_Code": "1153", "Part No": "IA450494", "Material Description": "CHRISTMAS CLIP (PASA )", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 980.0, "Jun-2026": 980.0, "Jul-2026": 980.0, "Aug-2026": 980.0, "Sep-2026": 980.0, "Oct-2026": 980.0, "Total_Forecast": 5880.0}, {"Plant_Code": "1153", "Part No": "IM300778", "Material Description": "REAR  WHEEL HUB BOLT KIT - PB3008", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 980.0, "Jun-2026": 980.0, "Jul-2026": 980.0, "Aug-2026": 980.0, "Sep-2026": 980.0, "Oct-2026": 980.0, "Total_Forecast": 5880.0}, {"Plant_Code": "1110", "Part No": "IM301273L", "Material Description": "Eicher Life Max Coolant-VCS-2", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 979.0, "Jun-2026": 979.0, "Jul-2026": 979.0, "Aug-2026": 979.0, "Sep-2026": 979.0, "Oct-2026": 979.0, "Total_Forecast": 5874.0}, {"Plant_Code": "1152", "Part No": "IA455378", "Material Description": "WHEEL STUD D Bolt", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 974.0, "Jun-2026": 974.0, "Jul-2026": 974.0, "Aug-2026": 974.0, "Sep-2026": 974.0, "Oct-2026": 974.0, "Total_Forecast": 5844.0}, {"Plant_Code": "1110", "Part No": "IA208182", "Material Description": "CAP, FUEL TANK (HCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 973.33, "Jun-2026": 973.33, "Jul-2026": 973.33, "Aug-2026": 973.33, "Sep-2026": 973.33, "Oct-2026": 973.33, "Total_Forecast": 5840.0}, {"Plant_Code": "1153", "Part No": "ID321269", "Material Description": "GASKET, ROCKER COVER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 971.33, "Jun-2026": 971.33, "Jul-2026": 971.33, "Aug-2026": 971.33, "Sep-2026": 971.33, "Oct-2026": 971.33, "Total_Forecast": 5828.0}, {"Plant_Code": "1110", "Part No": "23613483", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 966.0, "Jun-2026": 966.0, "Jul-2026": 966.0, "Aug-2026": 966.0, "Sep-2026": 966.0, "Oct-2026": 966.0, "Total_Forecast": 5796.0}, {"Plant_Code": "1155", "Part No": "IB009647", "Material Description": "CONNECTOR BRACKET", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 966.0, "Jun-2026": 966.0, "Jul-2026": 966.0, "Aug-2026": 966.0, "Sep-2026": 966.0, "Oct-2026": 966.0, "Total_Forecast": 5796.0}, {"Plant_Code": "1110", "Part No": "MB394511", "Material Description": "HANDLE ASSY DOOR O/S RH", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 965.0, "Jun-2026": 965.0, "Jul-2026": 965.0, "Aug-2026": 965.0, "Sep-2026": 965.0, "Oct-2026": 965.0, "Total_Forecast": 5790.0}, {"Plant_Code": "1110", "Part No": "IB001883", "Material Description": "949902 CABLE BAND (L-150)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 960.0, "Jun-2026": 960.0, "Jul-2026": 960.0, "Aug-2026": 960.0, "Sep-2026": 960.0, "Oct-2026": 960.0, "Total_Forecast": 5760.0}, {"Plant_Code": "1153", "Part No": "IM300457", "Material Description": "Hub Greasing kit 10.80XP/10.90 AB/10.95", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 953.33, "Jun-2026": 953.33, "Jul-2026": 953.33, "Aug-2026": 953.33, "Sep-2026": 953.33, "Oct-2026": 953.33, "Total_Forecast": 5720.0}, {"Plant_Code": "1110", "Part No": "2223466446", "Material Description": "FILTER INSERT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 953.0, "Jun-2026": 953.0, "Jul-2026": 953.0, "Aug-2026": 953.0, "Sep-2026": 953.0, "Oct-2026": 953.0, "Total_Forecast": 5718.0}, {"Plant_Code": "1153", "Part No": "ID309798", "Material Description": "EXHAUST VALVE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 952.0, "Jun-2026": 952.0, "Jul-2026": 952.0, "Aug-2026": 952.0, "Sep-2026": 952.0, "Oct-2026": 952.0, "Total_Forecast": 5712.0}, {"Plant_Code": "1153", "Part No": "IM300402", "Material Description": "REAR WHEEL HUB BOLT KIT 11.10", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 951.0, "Jun-2026": 951.0, "Jul-2026": 951.0, "Aug-2026": 951.0, "Sep-2026": 951.0, "Oct-2026": 951.0, "Total_Forecast": 5706.0}, {"Plant_Code": "1153", "Part No": "ID309797", "Material Description": "INLET VALVE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 950.33, "Jun-2026": 950.33, "Jul-2026": 950.33, "Aug-2026": 950.33, "Sep-2026": 950.33, "Oct-2026": 950.33, "Total_Forecast": 5702.0}, {"Plant_Code": "1153", "Part No": "ID304190", "Material Description": "CLUTCH RELEASE BEARING ASSY.", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 950.0, "Jun-2026": 950.0, "Jul-2026": 950.0, "Aug-2026": 950.0, "Sep-2026": 950.0, "Oct-2026": 950.0, "Total_Forecast": 5700.0}, {"Plant_Code": "1110", "Part No": "IA308959", "Material Description": "Front Grill Clip LD", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 946.67, "Jun-2026": 946.67, "Jul-2026": 946.67, "Aug-2026": 946.67, "Sep-2026": 946.67, "Oct-2026": 946.67, "Total_Forecast": 5680.0}, {"Plant_Code": "1155", "Part No": "IM301144", "Material Description": "AIR FILTER SET PRO2049 TO 2095 BS VI", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 944.67, "Jun-2026": 944.67, "Jul-2026": 944.67, "Aug-2026": 944.67, "Sep-2026": 944.67, "Oct-2026": 944.67, "Total_Forecast": 5668.0}, {"Plant_Code": "1110", "Part No": "IB999850", "Material Description": "FILTER SET E483", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 944.33, "Jun-2026": 944.33, "Jul-2026": 944.33, "Aug-2026": 944.33, "Sep-2026": 944.33, "Oct-2026": 944.33, "Total_Forecast": 5666.0}, {"Plant_Code": "1153", "Part No": "IM300996", "Material Description": "Kit Clutch Cover & disc assembly", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 944.0, "Jun-2026": 944.0, "Jul-2026": 944.0, "Aug-2026": 944.0, "Sep-2026": 944.0, "Oct-2026": 944.0, "Total_Forecast": 5664.0}, {"Plant_Code": "1153", "Part No": "IA203213", "Material Description": "NUT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 943.33, "Jun-2026": 943.33, "Jul-2026": 943.33, "Aug-2026": 943.33, "Sep-2026": 943.33, "Oct-2026": 943.33, "Total_Forecast": 5660.0}, {"Plant_Code": "1152", "Part No": "MF472141", "Material Description": "PIN, SPLIT (8X80)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 940.0, "Jun-2026": 940.0, "Jul-2026": 940.0, "Aug-2026": 940.0, "Sep-2026": 940.0, "Oct-2026": 940.0, "Total_Forecast": 5640.0}, {"Plant_Code": "1155", "Part No": "ID316950", "Material Description": "FILTER ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 936.0, "Jun-2026": 936.0, "Jul-2026": 936.0, "Aug-2026": 936.0, "Sep-2026": 936.0, "Oct-2026": 936.0, "Total_Forecast": 5616.0}, {"Plant_Code": "1152", "Part No": "ID378974", "Material Description": "combo oil filter", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 935.0, "Jun-2026": 935.0, "Jul-2026": 935.0, "Aug-2026": 935.0, "Sep-2026": 935.0, "Oct-2026": 935.0, "Total_Forecast": 5610.0}, {"Plant_Code": "1152", "Part No": "ID376839", "Material Description": "SERVICE KIT OIL FILTER & O RING", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 934.0, "Jun-2026": 934.0, "Jul-2026": 934.0, "Aug-2026": 934.0, "Sep-2026": 934.0, "Oct-2026": 934.0, "Total_Forecast": 5604.0}, {"Plant_Code": "1152", "Part No": "IZ300293", "Material Description": "Black Seal Gasket maker small", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 931.0, "Jun-2026": 931.0, "Jul-2026": 931.0, "Aug-2026": 931.0, "Sep-2026": 931.0, "Oct-2026": 931.0, "Total_Forecast": 5586.0}, {"Plant_Code": "1152", "Part No": "MF434105", "Material Description": "NUT FL. M10x1.25", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 930.0, "Jun-2026": 930.0, "Jul-2026": 930.0, "Aug-2026": 930.0, "Sep-2026": 930.0, "Oct-2026": 930.0, "Total_Forecast": 5580.0}, {"Plant_Code": "1153", "Part No": "MF243624", "Material Description": "BOLT WASHER ASSEMBLED 6X16", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 930.0, "Jun-2026": 930.0, "Jul-2026": 930.0, "Aug-2026": 930.0, "Sep-2026": 930.0, "Oct-2026": 930.0, "Total_Forecast": 5580.0}, {"Plant_Code": "1155", "Part No": "IA203036", "Material Description": "GASKET,REAR AXLE SHAFT (LCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 930.0, "Jun-2026": 930.0, "Jul-2026": 930.0, "Aug-2026": 930.0, "Sep-2026": 930.0, "Oct-2026": 930.0, "Total_Forecast": 5580.0}, {"Plant_Code": "1155", "Part No": "IM301131", "Material Description": "Service KIT supply module (BSVI) \u2013 E494", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 928.33, "Jun-2026": 928.33, "Jul-2026": 928.33, "Aug-2026": 928.33, "Sep-2026": 928.33, "Oct-2026": 928.33, "Total_Forecast": 5570.0}, {"Plant_Code": "1153", "Part No": "ID304913", "Material Description": "NUT SELF LOCKING M12x1.25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 915.0, "Jun-2026": 915.0, "Jul-2026": 915.0, "Aug-2026": 915.0, "Sep-2026": 915.0, "Oct-2026": 915.0, "Total_Forecast": 5490.0}, {"Plant_Code": "1153", "Part No": "ME600343", "Material Description": "ME600343, SPRING RETURN", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 913.33, "Jun-2026": 913.33, "Jul-2026": 913.33, "Aug-2026": 913.33, "Sep-2026": 913.33, "Oct-2026": 913.33, "Total_Forecast": 5480.0}, {"Plant_Code": "1153", "Part No": "IB009647", "Material Description": "CONNECTOR BRACKET", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 910.67, "Jun-2026": 910.67, "Jul-2026": 910.67, "Aug-2026": 910.67, "Sep-2026": 910.67, "Oct-2026": 910.67, "Total_Forecast": 5464.0}, {"Plant_Code": "1153", "Part No": "ID350638", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 904.67, "Jun-2026": 904.67, "Jul-2026": 904.67, "Aug-2026": 904.67, "Sep-2026": 904.67, "Oct-2026": 904.67, "Total_Forecast": 5428.0}, {"Plant_Code": "1155", "Part No": "MF453045", "Material Description": "SCREW TAPPING 6X12", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 900.0, "Jun-2026": 900.0, "Jul-2026": 900.0, "Aug-2026": 900.0, "Sep-2026": 900.0, "Oct-2026": 900.0, "Total_Forecast": 5400.0}, {"Plant_Code": "1153", "Part No": "IM300765", "Material Description": "DOOR HINGES ASSY - RH", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 899.0, "Jun-2026": 899.0, "Jul-2026": 899.0, "Aug-2026": 899.0, "Sep-2026": 899.0, "Oct-2026": 899.0, "Total_Forecast": 5394.0}, {"Plant_Code": "1153", "Part No": "IA450014", "Material Description": "OIL SEAL FRONT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 897.0, "Jun-2026": 897.0, "Jul-2026": 897.0, "Aug-2026": 897.0, "Sep-2026": 897.0, "Oct-2026": 897.0, "Total_Forecast": 5382.0}, {"Plant_Code": "1155", "Part No": "IA215142", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 897.0, "Jun-2026": 897.0, "Jul-2026": 897.0, "Aug-2026": 897.0, "Sep-2026": 897.0, "Oct-2026": 897.0, "Total_Forecast": 5382.0}, {"Plant_Code": "1110", "Part No": "23613492", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 880.0, "Jun-2026": 880.0, "Jul-2026": 880.0, "Aug-2026": 880.0, "Sep-2026": 880.0, "Oct-2026": 880.0, "Total_Forecast": 5280.0}, {"Plant_Code": "1153", "Part No": "MF472071", "Material Description": "SPLIT PIN (3X30)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 880.0, "Jun-2026": 880.0, "Jul-2026": 880.0, "Aug-2026": 880.0, "Sep-2026": 880.0, "Oct-2026": 880.0, "Total_Forecast": 5280.0}, {"Plant_Code": "1155", "Part No": "ID304913", "Material Description": "NUT SELF LOCKING M12x1.25", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 880.0, "Jun-2026": 880.0, "Jul-2026": 880.0, "Aug-2026": 880.0, "Sep-2026": 880.0, "Oct-2026": 880.0, "Total_Forecast": 5280.0}, {"Plant_Code": "1153", "Part No": "IM301144", "Material Description": "AIR FILTER SET PRO2049 TO 2095 BS VI", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 877.33, "Jun-2026": 877.33, "Jul-2026": 877.33, "Aug-2026": 877.33, "Sep-2026": 877.33, "Oct-2026": 877.33, "Total_Forecast": 5264.0}, {"Plant_Code": "1152", "Part No": "ID332218", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 877.0, "Jun-2026": 877.0, "Jul-2026": 877.0, "Aug-2026": 877.0, "Sep-2026": 877.0, "Oct-2026": 877.0, "Total_Forecast": 5262.0}, {"Plant_Code": "1155", "Part No": "IZ300293", "Material Description": "Black Seal Gasket maker small", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 873.67, "Jun-2026": 873.67, "Jul-2026": 873.67, "Aug-2026": 873.67, "Sep-2026": 873.67, "Oct-2026": 873.67, "Total_Forecast": 5242.0}, {"Plant_Code": "1153", "Part No": "MB394510", "Material Description": "HANDLE ASSY DOOR O/S LH", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 871.0, "Jun-2026": 871.0, "Jul-2026": 871.0, "Aug-2026": 871.0, "Sep-2026": 871.0, "Oct-2026": 871.0, "Total_Forecast": 5226.0}, {"Plant_Code": "1153", "Part No": "IM301198", "Material Description": "OIL CHANGE FILTER KIT 2049 to 2110E BSVI", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 870.67, "Jun-2026": 870.67, "Jul-2026": 870.67, "Aug-2026": 870.67, "Sep-2026": 870.67, "Oct-2026": 870.67, "Total_Forecast": 5224.0}, {"Plant_Code": "1110", "Part No": "ID202139", "Material Description": "BUSHING CON ROD FINISHED", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 868.67, "Jun-2026": 868.67, "Jul-2026": 868.67, "Aug-2026": 868.67, "Sep-2026": 868.67, "Oct-2026": 868.67, "Total_Forecast": 5212.0}, {"Plant_Code": "1153", "Part No": "IZ300289", "Material Description": "Grey Seal Gasket maker big", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 868.67, "Jun-2026": 868.67, "Jul-2026": 868.67, "Aug-2026": 868.67, "Sep-2026": 868.67, "Oct-2026": 868.67, "Total_Forecast": 5212.0}, {"Plant_Code": "1155", "Part No": "IF000504", "Material Description": "OIL SEAL, FR HUB WHEEL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 864.67, "Jun-2026": 864.67, "Jul-2026": 864.67, "Aug-2026": 864.67, "Sep-2026": 864.67, "Oct-2026": 864.67, "Total_Forecast": 5188.0}, {"Plant_Code": "1110", "Part No": "ID311824", "Material Description": "GASKET (Rear Axle Shaft)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 863.0, "Jun-2026": 863.0, "Jul-2026": 863.0, "Aug-2026": 863.0, "Sep-2026": 863.0, "Oct-2026": 863.0, "Total_Forecast": 5178.0}, {"Plant_Code": "1153", "Part No": "MF434106", "Material Description": "FLANGE NUT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 860.0, "Jun-2026": 860.0, "Jul-2026": 860.0, "Aug-2026": 860.0, "Sep-2026": 860.0, "Oct-2026": 860.0, "Total_Forecast": 5160.0}, {"Plant_Code": "1155", "Part No": "MF660064", "Material Description": "GASKET(12)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 860.0, "Jun-2026": 860.0, "Jul-2026": 860.0, "Aug-2026": 860.0, "Sep-2026": 860.0, "Oct-2026": 860.0, "Total_Forecast": 5160.0}, {"Plant_Code": "1153", "Part No": "ID364170", "Material Description": "FUEL WATER SEPARATOR", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 857.33, "Jun-2026": 857.33, "Jul-2026": 857.33, "Aug-2026": 857.33, "Sep-2026": 857.33, "Oct-2026": 857.33, "Total_Forecast": 5144.0}, {"Plant_Code": "1110", "Part No": "ID334332", "Material Description": "ADBLUE BACKFLOW CONNECTOR KIT", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 852.0, "Jun-2026": 852.0, "Jul-2026": 852.0, "Aug-2026": 852.0, "Sep-2026": 852.0, "Oct-2026": 852.0, "Total_Forecast": 5112.0}, {"Plant_Code": "1153", "Part No": "ID313581", "Material Description": "TAPPET", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 852.0, "Jun-2026": 852.0, "Jul-2026": 852.0, "Aug-2026": 852.0, "Sep-2026": 852.0, "Oct-2026": 852.0, "Total_Forecast": 5112.0}, {"Plant_Code": "1110", "Part No": "ID376613", "Material Description": "FILTER ELEMENT", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 851.33, "Jun-2026": 851.33, "Jul-2026": 851.33, "Aug-2026": 851.33, "Sep-2026": 851.33, "Oct-2026": 851.33, "Total_Forecast": 5108.0}, {"Plant_Code": "1153", "Part No": "MC131179", "Material Description": "HANDLE ASSY DOOR WINDOW REG", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 851.33, "Jun-2026": 851.33, "Jul-2026": 851.33, "Aug-2026": 851.33, "Sep-2026": 851.33, "Oct-2026": 851.33, "Total_Forecast": 5108.0}, {"Plant_Code": "1152", "Part No": "ID362270", "Material Description": "FILTER ELEMENT WITH O-RING MAIN FILTER", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 851.0, "Jun-2026": 851.0, "Jul-2026": 851.0, "Aug-2026": 851.0, "Sep-2026": 851.0, "Oct-2026": 851.0, "Total_Forecast": 5106.0}, {"Plant_Code": "1155", "Part No": "IM300700", "Material Description": "AIR FILTER SET PRO 6000", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 841.33, "Jun-2026": 841.33, "Jul-2026": 841.33, "Aug-2026": 841.33, "Sep-2026": 841.33, "Oct-2026": 841.33, "Total_Forecast": 5048.0}, {"Plant_Code": "1110", "Part No": "IA450015", "Material Description": "OIL SEAL REAR INNER", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 840.67, "Jun-2026": 840.67, "Jul-2026": 840.67, "Aug-2026": 840.67, "Sep-2026": 840.67, "Oct-2026": 840.67, "Total_Forecast": 5044.0}, {"Plant_Code": "1153", "Part No": "MF140460", "Material Description": "BOLT M10x1.25x25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 840.0, "Jun-2026": 840.0, "Jul-2026": 840.0, "Aug-2026": 840.0, "Sep-2026": 840.0, "Oct-2026": 840.0, "Total_Forecast": 5040.0}, {"Plant_Code": "1155", "Part No": "MF434106", "Material Description": "FLANGE NUT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 840.0, "Jun-2026": 840.0, "Jul-2026": 840.0, "Aug-2026": 840.0, "Sep-2026": 840.0, "Oct-2026": 840.0, "Total_Forecast": 5040.0}, {"Plant_Code": "1155", "Part No": "MF660063", "Material Description": "GASKET (10)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 840.0, "Jun-2026": 840.0, "Jul-2026": 840.0, "Aug-2026": 840.0, "Sep-2026": 840.0, "Oct-2026": 840.0, "Total_Forecast": 5040.0}, {"Plant_Code": "1110", "Part No": "MF445086", "Material Description": "NUT SELF LOCKING 12", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 839.33, "Jun-2026": 839.33, "Jul-2026": 839.33, "Aug-2026": 839.33, "Sep-2026": 839.33, "Oct-2026": 839.33, "Total_Forecast": 5036.0}, {"Plant_Code": "1155", "Part No": "ID601204", "Material Description": "ELEMENT, OIL FILTER", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 834.0, "Jun-2026": 834.0, "Jul-2026": 834.0, "Aug-2026": 834.0, "Sep-2026": 834.0, "Oct-2026": 834.0, "Total_Forecast": 5004.0}, {"Plant_Code": "1110", "Part No": "ME603242", "Material Description": "ME603242, RING SYNCHRONIZER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 832.0, "Jun-2026": 832.0, "Jul-2026": 832.0, "Aug-2026": 832.0, "Sep-2026": 832.0, "Oct-2026": 832.0, "Total_Forecast": 4992.0}, {"Plant_Code": "1153", "Part No": "ID376613", "Material Description": "FILTER ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 831.0, "Jun-2026": 831.0, "Jul-2026": 831.0, "Aug-2026": 831.0, "Sep-2026": 831.0, "Oct-2026": 831.0, "Total_Forecast": 4986.0}, {"Plant_Code": "1153", "Part No": "IA202686", "Material Description": "BOLT, REAR AXLE SHAFT", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 830.0, "Jun-2026": 830.0, "Jul-2026": 830.0, "Aug-2026": 830.0, "Sep-2026": 830.0, "Oct-2026": 830.0, "Total_Forecast": 4980.0}, {"Plant_Code": "1153", "Part No": "2223466446", "Material Description": "FILTER INSERT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 828.67, "Jun-2026": 828.67, "Jul-2026": 828.67, "Aug-2026": 828.67, "Sep-2026": 828.67, "Oct-2026": 828.67, "Total_Forecast": 4972.0}, {"Plant_Code": "1153", "Part No": "ID350639", "Material Description": "SECONDARY ELEMENT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 825.33, "Jun-2026": 825.33, "Jul-2026": 825.33, "Aug-2026": 825.33, "Sep-2026": 825.33, "Oct-2026": 825.33, "Total_Forecast": 4952.0}, {"Plant_Code": "1155", "Part No": "IM300404", "Material Description": "REAR WHEEL HUB BOLT KIT HD", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 821.0, "Jun-2026": 821.0, "Jul-2026": 821.0, "Aug-2026": 821.0, "Sep-2026": 821.0, "Oct-2026": 821.0, "Total_Forecast": 4926.0}, {"Plant_Code": "1152", "Part No": "IA215577", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL (MCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 820.33, "Jun-2026": 820.33, "Jul-2026": 820.33, "Aug-2026": 820.33, "Sep-2026": 820.33, "Oct-2026": 820.33, "Total_Forecast": 4922.0}, {"Plant_Code": "1152", "Part No": "ID309812", "Material Description": "Valve Collet", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 820.0, "Jun-2026": 820.0, "Jul-2026": 820.0, "Aug-2026": 820.0, "Sep-2026": 820.0, "Oct-2026": 820.0, "Total_Forecast": 4920.0}, {"Plant_Code": "1153", "Part No": "MF472104", "Material Description": "PIN SPLIT 5.0x50.0", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 820.0, "Jun-2026": 820.0, "Jul-2026": 820.0, "Aug-2026": 820.0, "Sep-2026": 820.0, "Oct-2026": 820.0, "Total_Forecast": 4920.0}, {"Plant_Code": "1110", "Part No": "IA202651", "Material Description": "SEAL HUB REAR INNER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 819.33, "Jun-2026": 819.33, "Jul-2026": 819.33, "Aug-2026": 819.33, "Sep-2026": 819.33, "Oct-2026": 819.33, "Total_Forecast": 4916.0}, {"Plant_Code": "1110", "Part No": "IA340286", "Material Description": "OIL SEAL HUB REAR OUTER", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 816.67, "Jun-2026": 816.67, "Jul-2026": 816.67, "Aug-2026": 816.67, "Sep-2026": 816.67, "Oct-2026": 816.67, "Total_Forecast": 4900.0}, {"Plant_Code": "1152", "Part No": "ID362276", "Material Description": "FILTER ELEMENT WITH O-RING PRE FILTER", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 816.0, "Jun-2026": 816.0, "Jul-2026": 816.0, "Aug-2026": 816.0, "Sep-2026": 816.0, "Oct-2026": 816.0, "Total_Forecast": 4896.0}, {"Plant_Code": "1110", "Part No": "ID346438", "Material Description": "PRIMARY FILTER SPIN-ON, EICHER", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 811.0, "Jun-2026": 811.0, "Jul-2026": 811.0, "Aug-2026": 811.0, "Sep-2026": 811.0, "Oct-2026": 811.0, "Total_Forecast": 4866.0}, {"Plant_Code": "1155", "Part No": "MF140460", "Material Description": "BOLT M10x1.25x25", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 810.0, "Jun-2026": 810.0, "Jul-2026": 810.0, "Aug-2026": 810.0, "Sep-2026": 810.0, "Oct-2026": 810.0, "Total_Forecast": 4860.0}, {"Plant_Code": "1110", "Part No": "ID206974", "Material Description": "MICRO SUPER FILTER INSERT STAR (HCV)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 809.0, "Jun-2026": 809.0, "Jul-2026": 809.0, "Aug-2026": 809.0, "Sep-2026": 809.0, "Oct-2026": 809.0, "Total_Forecast": 4854.0}, {"Plant_Code": "1110", "Part No": "ID316951", "Material Description": "SECONDARY FILTER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 808.67, "Jun-2026": 808.67, "Jul-2026": 808.67, "Aug-2026": 808.67, "Sep-2026": 808.67, "Oct-2026": 808.67, "Total_Forecast": 4852.0}, {"Plant_Code": "1153", "Part No": "ID311824", "Material Description": "GASKET (Rear Axle Shaft)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 807.33, "Jun-2026": 807.33, "Jul-2026": 807.33, "Aug-2026": 807.33, "Sep-2026": 807.33, "Oct-2026": 807.33, "Total_Forecast": 4844.0}, {"Plant_Code": "1155", "Part No": "IA202651", "Material Description": "SEAL HUB REAR INNER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 806.0, "Jun-2026": 806.0, "Jul-2026": 806.0, "Aug-2026": 806.0, "Sep-2026": 806.0, "Oct-2026": 806.0, "Total_Forecast": 4836.0}, {"Plant_Code": "1153", "Part No": "IB999847", "Material Description": " BEARING SET (CENTRE BEARING)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 805.33, "Jun-2026": 805.33, "Jul-2026": 805.33, "Aug-2026": 805.33, "Sep-2026": 805.33, "Oct-2026": 805.33, "Total_Forecast": 4832.0}, {"Plant_Code": "1155", "Part No": "MF445086", "Material Description": "NUT SELF LOCKING 12", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 803.33, "Jun-2026": 803.33, "Jul-2026": 803.33, "Aug-2026": 803.33, "Sep-2026": 803.33, "Oct-2026": 803.33, "Total_Forecast": 4820.0}, {"Plant_Code": "1155", "Part No": "ID205077", "Material Description": "CABLE ACCELERATOR (1090 K CNG)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 801.67, "Jun-2026": 801.67, "Jul-2026": 801.67, "Aug-2026": 801.67, "Sep-2026": 801.67, "Oct-2026": 801.67, "Total_Forecast": 4810.0}, {"Plant_Code": "1110", "Part No": "23613506", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 800.0, "Jun-2026": 800.0, "Jul-2026": 800.0, "Aug-2026": 800.0, "Sep-2026": 800.0, "Oct-2026": 800.0, "Total_Forecast": 4800.0}, {"Plant_Code": "1153", "Part No": "IB001883", "Material Description": "949902 CABLE BAND (L-150)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 800.0, "Jun-2026": 800.0, "Jul-2026": 800.0, "Aug-2026": 800.0, "Sep-2026": 800.0, "Oct-2026": 800.0, "Total_Forecast": 4800.0}, {"Plant_Code": "1153", "Part No": "ID364878", "Material Description": "GASKET_7.5''", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 800.0, "Jun-2026": 800.0, "Jul-2026": 800.0, "Aug-2026": 800.0, "Sep-2026": 800.0, "Oct-2026": 800.0, "Total_Forecast": 4800.0}, {"Plant_Code": "1155", "Part No": "IA330925", "Material Description": "CLIP TRIM", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 800.0, "Jun-2026": 800.0, "Jul-2026": 800.0, "Aug-2026": 800.0, "Sep-2026": 800.0, "Oct-2026": 800.0, "Total_Forecast": 4800.0}, {"Plant_Code": "1110", "Part No": "MB394510", "Material Description": "HANDLE ASSY DOOR O/S LH", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 795.33, "Jun-2026": 795.33, "Jul-2026": 795.33, "Aug-2026": 795.33, "Sep-2026": 795.33, "Oct-2026": 795.33, "Total_Forecast": 4772.0}, {"Plant_Code": "1110", "Part No": "IA450014", "Material Description": "OIL SEAL FRONT", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 791.33, "Jun-2026": 791.33, "Jul-2026": 791.33, "Aug-2026": 791.33, "Sep-2026": 791.33, "Oct-2026": 791.33, "Total_Forecast": 4748.0}, {"Plant_Code": "1110", "Part No": "MF472141", "Material Description": "PIN, SPLIT (8X80)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 788.67, "Jun-2026": 788.67, "Jul-2026": 788.67, "Aug-2026": 788.67, "Sep-2026": 788.67, "Oct-2026": 788.67, "Total_Forecast": 4732.0}, {"Plant_Code": "1153", "Part No": "IA308959", "Material Description": "Front Grill Clip LD", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 786.67, "Jun-2026": 786.67, "Jul-2026": 786.67, "Aug-2026": 786.67, "Sep-2026": 786.67, "Oct-2026": 786.67, "Total_Forecast": 4720.0}, {"Plant_Code": "1153", "Part No": "ID379580", "Material Description": "ID379580, OIL SEAL, M/T CASEEXTN., RR -", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 783.67, "Jun-2026": 783.67, "Jul-2026": 783.67, "Aug-2026": 783.67, "Sep-2026": 783.67, "Oct-2026": 783.67, "Total_Forecast": 4702.0}, {"Plant_Code": "1110", "Part No": "ID205077", "Material Description": "CABLE ACCELERATOR (1090 K CNG)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 781.0, "Jun-2026": 781.0, "Jul-2026": 781.0, "Aug-2026": 781.0, "Sep-2026": 781.0, "Oct-2026": 781.0, "Total_Forecast": 4686.0}, {"Plant_Code": "1110", "Part No": "MH035167", "Material Description": "GASKET, FUEL FILTER", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 780.0, "Jun-2026": 780.0, "Jul-2026": 780.0, "Aug-2026": 780.0, "Sep-2026": 780.0, "Oct-2026": 780.0, "Total_Forecast": 4680.0}, {"Plant_Code": "1152", "Part No": "IF300915", "Material Description": "ALLEN BOLTM12x1.5X88", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 780.0, "Jun-2026": 780.0, "Jul-2026": 780.0, "Aug-2026": 780.0, "Sep-2026": 780.0, "Oct-2026": 780.0, "Total_Forecast": 4680.0}, {"Plant_Code": "1153", "Part No": "MF140462", "Material Description": "BOLT FLANGE (10X1.25X30)  8", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 780.0, "Jun-2026": 780.0, "Jul-2026": 780.0, "Aug-2026": 780.0, "Sep-2026": 780.0, "Oct-2026": 780.0, "Total_Forecast": 4680.0}, {"Plant_Code": "1110", "Part No": "IE332172", "Material Description": "UCS ASSEMBLY", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 772.0, "Jun-2026": 772.0, "Jul-2026": 772.0, "Aug-2026": 772.0, "Sep-2026": 772.0, "Oct-2026": 772.0, "Total_Forecast": 4632.0}, {"Plant_Code": "1152", "Part No": "ID370657", "Material Description": "FILTER SPIN ON", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 766.0, "Jun-2026": 766.0, "Jul-2026": 766.0, "Aug-2026": 766.0, "Sep-2026": 766.0, "Oct-2026": 766.0, "Total_Forecast": 4596.0}, {"Plant_Code": "1110", "Part No": "ID333234", "Material Description": "GASKET", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 765.0, "Jun-2026": 765.0, "Jul-2026": 765.0, "Aug-2026": 765.0, "Sep-2026": 765.0, "Oct-2026": 765.0, "Total_Forecast": 4590.0}, {"Plant_Code": "1153", "Part No": "ME601295", "Material Description": "RING SYNCHRONISER (4TH & O/", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 763.0, "Jun-2026": 763.0, "Jul-2026": 763.0, "Aug-2026": 763.0, "Sep-2026": 763.0, "Oct-2026": 763.0, "Total_Forecast": 4578.0}, {"Plant_Code": "1110", "Part No": "MF472104", "Material Description": "PIN SPLIT 5.0x50.0", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 760.0, "Jun-2026": 760.0, "Jul-2026": 760.0, "Aug-2026": 760.0, "Sep-2026": 760.0, "Oct-2026": 760.0, "Total_Forecast": 4560.0}, {"Plant_Code": "1152", "Part No": "ID377754", "Material Description": "FILTER INSERT", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 760.0, "Jun-2026": 760.0, "Jul-2026": 760.0, "Aug-2026": 760.0, "Sep-2026": 760.0, "Oct-2026": 760.0, "Total_Forecast": 4560.0}, {"Plant_Code": "1153", "Part No": "ID301546", "Material Description": "STUD M12 (10.80 XP C W/B TIPPER)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 760.0, "Jun-2026": 760.0, "Jul-2026": 760.0, "Aug-2026": 760.0, "Sep-2026": 760.0, "Oct-2026": 760.0, "Total_Forecast": 4560.0}, {"Plant_Code": "1153", "Part No": "ME011660", "Material Description": "SEAL SIDE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 752.0, "Jun-2026": 752.0, "Jul-2026": 752.0, "Aug-2026": 752.0, "Sep-2026": 752.0, "Oct-2026": 752.0, "Total_Forecast": 4512.0}, {"Plant_Code": "1153", "Part No": "ID304877", "Material Description": "SPRING CLUTCH RELEASE", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 750.67, "Jun-2026": 750.67, "Jul-2026": 750.67, "Aug-2026": 750.67, "Sep-2026": 750.67, "Oct-2026": 750.67, "Total_Forecast": 4504.0}, {"Plant_Code": "1155", "Part No": "ID623010", "Material Description": "INJECTOR ASSY CNG BS VI SOFT SEAT", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 750.67, "Jun-2026": 750.67, "Jul-2026": 750.67, "Aug-2026": 750.67, "Sep-2026": 750.67, "Oct-2026": 750.67, "Total_Forecast": 4504.0}, {"Plant_Code": "1110", "Part No": "23613510", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 750.0, "Jun-2026": 750.0, "Jul-2026": 750.0, "Aug-2026": 750.0, "Sep-2026": 750.0, "Oct-2026": 750.0, "Total_Forecast": 4500.0}, {"Plant_Code": "1155", "Part No": "IE302372", "Material Description": "980881 Engine harness clip", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 750.0, "Jun-2026": 750.0, "Jul-2026": 750.0, "Aug-2026": 750.0, "Sep-2026": 750.0, "Oct-2026": 750.0, "Total_Forecast": 4500.0}, {"Plant_Code": "1155", "Part No": "ID316951", "Material Description": "SECONDARY FILTER", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 749.0, "Jun-2026": 749.0, "Jul-2026": 749.0, "Aug-2026": 749.0, "Sep-2026": 749.0, "Oct-2026": 749.0, "Total_Forecast": 4494.0}, {"Plant_Code": "1110", "Part No": "MF434106", "Material Description": "FLANGE NUT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 748.33, "Jun-2026": 748.33, "Jul-2026": 748.33, "Aug-2026": 748.33, "Sep-2026": 748.33, "Oct-2026": 748.33, "Total_Forecast": 4490.0}, {"Plant_Code": "1153", "Part No": "MH004054", "Material Description": "NUT, SELF LOCK FLANGE (M10X1.25)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 748.33, "Jun-2026": 748.33, "Jul-2026": 748.33, "Aug-2026": 748.33, "Sep-2026": 748.33, "Oct-2026": 748.33, "Total_Forecast": 4490.0}, {"Plant_Code": "1153", "Part No": "IA236374", "Material Description": "HANDLE ASSY DOOR WINDOW REG", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 748.0, "Jun-2026": 748.0, "Jul-2026": 748.0, "Aug-2026": 748.0, "Sep-2026": 748.0, "Oct-2026": 748.0, "Total_Forecast": 4488.0}, {"Plant_Code": "1155", "Part No": "IZ300294", "Material Description": "Black  Seal Gasket maker big", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 747.67, "Jun-2026": 747.67, "Jul-2026": 747.67, "Aug-2026": 747.67, "Sep-2026": 747.67, "Oct-2026": 747.67, "Total_Forecast": 4486.0}, {"Plant_Code": "1155", "Part No": "MB344408", "Material Description": "CLIP TRIM", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 746.67, "Jun-2026": 746.67, "Jul-2026": 746.67, "Aug-2026": 746.67, "Sep-2026": 746.67, "Oct-2026": 746.67, "Total_Forecast": 4480.0}, {"Plant_Code": "1153", "Part No": "IA205446", "Material Description": "IA205446,BOLT COMPANION FLANGE (HCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 738.33, "Jun-2026": 738.33, "Jul-2026": 738.33, "Aug-2026": 738.33, "Sep-2026": 738.33, "Oct-2026": 738.33, "Total_Forecast": 4430.0}, {"Plant_Code": "1152", "Part No": "IA803032", "Material Description": "SEALING RING  FRONT HUBVE8100", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 735.67, "Jun-2026": 735.67, "Jul-2026": 735.67, "Aug-2026": 735.67, "Sep-2026": 735.67, "Oct-2026": 735.67, "Total_Forecast": 4414.0}, {"Plant_Code": "1110", "Part No": "2223958456", "Material Description": "OIL FILTER KIT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 733.0, "Jun-2026": 733.0, "Jul-2026": 733.0, "Aug-2026": 733.0, "Sep-2026": 733.0, "Oct-2026": 733.0, "Total_Forecast": 4398.0}, {"Plant_Code": "1155", "Part No": "ID304877", "Material Description": "SPRING CLUTCH RELEASE", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 732.67, "Jun-2026": 732.67, "Jul-2026": 732.67, "Aug-2026": 732.67, "Sep-2026": 732.67, "Oct-2026": 732.67, "Total_Forecast": 4396.0}, {"Plant_Code": "1110", "Part No": "IE453474", "Material Description": "BOOT ASSY", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 728.0, "Jun-2026": 728.0, "Jul-2026": 728.0, "Aug-2026": 728.0, "Sep-2026": 728.0, "Oct-2026": 728.0, "Total_Forecast": 4368.0}, {"Plant_Code": "1155", "Part No": "ME074696", "Material Description": "SEAL, VALVE STEM", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 728.0, "Jun-2026": 728.0, "Jul-2026": 728.0, "Aug-2026": 728.0, "Sep-2026": 728.0, "Oct-2026": 728.0, "Total_Forecast": 4368.0}, {"Plant_Code": "1110", "Part No": "ID329237", "Material Description": "Inlet Valve", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 727.67, "Jun-2026": 727.67, "Jul-2026": 727.67, "Aug-2026": 727.67, "Sep-2026": 727.67, "Oct-2026": 727.67, "Total_Forecast": 4366.0}, {"Plant_Code": "1110", "Part No": "IZ300288", "Material Description": "Grey Seal Gasket maker small", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 727.0, "Jun-2026": 727.0, "Jul-2026": 727.0, "Aug-2026": 727.0, "Sep-2026": 727.0, "Oct-2026": 727.0, "Total_Forecast": 4362.0}, {"Plant_Code": "1110", "Part No": "ID329238", "Material Description": "Exhaust Valve", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 725.33, "Jun-2026": 725.33, "Jul-2026": 725.33, "Aug-2026": 725.33, "Sep-2026": 725.33, "Oct-2026": 725.33, "Total_Forecast": 4352.0}, {"Plant_Code": "1110", "Part No": "23613501", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 725.0, "Jun-2026": 725.0, "Jul-2026": 725.0, "Aug-2026": 725.0, "Sep-2026": 725.0, "Oct-2026": 725.0, "Total_Forecast": 4350.0}, {"Plant_Code": "1110", "Part No": "23613500", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1110", "Part No": "23613502", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1110", "Part No": "23613503", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1110", "Part No": "23613505", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1110", "Part No": "23613507", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1110", "Part No": "23613508", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1110", "Part No": "23613511", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1152", "Part No": "MF472127", "Material Description": "SPLIT PIN", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1153", "Part No": "MH035166", "Material Description": "GASKET (14)", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 720.0, "Jun-2026": 720.0, "Jul-2026": 720.0, "Aug-2026": 720.0, "Sep-2026": 720.0, "Oct-2026": 720.0, "Total_Forecast": 4320.0}, {"Plant_Code": "1155", "Part No": "IM300778", "Material Description": "REAR  WHEEL HUB BOLT KIT - PB3008", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 719.33, "Jun-2026": 719.33, "Jul-2026": 719.33, "Aug-2026": 719.33, "Sep-2026": 719.33, "Oct-2026": 719.33, "Total_Forecast": 4316.0}, {"Plant_Code": "1153", "Part No": "IM300428", "Material Description": "AIR FILTER SET E2PLUS", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 718.67, "Jun-2026": 718.67, "Jul-2026": 718.67, "Aug-2026": 718.67, "Sep-2026": 718.67, "Oct-2026": 718.67, "Total_Forecast": 4312.0}, {"Plant_Code": "1155", "Part No": "IA209911", "Material Description": "BUSHING, SHORT GSL (LCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 716.67, "Jun-2026": 716.67, "Jul-2026": 716.67, "Aug-2026": 716.67, "Sep-2026": 716.67, "Oct-2026": 716.67, "Total_Forecast": 4300.0}, {"Plant_Code": "1153", "Part No": "IA454407", "Material Description": "BOLT REAR M22X104_12.9 GRADE", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 715.0, "Jun-2026": 715.0, "Jul-2026": 715.0, "Aug-2026": 715.0, "Sep-2026": 715.0, "Oct-2026": 715.0, "Total_Forecast": 4290.0}, {"Plant_Code": "1153", "Part No": "ID329239", "Material Description": "Retainer Spring Bottom", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 713.33, "Jun-2026": 713.33, "Jul-2026": 713.33, "Aug-2026": 713.33, "Sep-2026": 713.33, "Oct-2026": 713.33, "Total_Forecast": 4280.0}, {"Plant_Code": "1110", "Part No": "ID357693", "Material Description": "ELEMENT, OIL FILTER", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 712.0, "Jun-2026": 712.0, "Jul-2026": 712.0, "Aug-2026": 712.0, "Sep-2026": 712.0, "Oct-2026": 712.0, "Total_Forecast": 4272.0}, {"Plant_Code": "1153", "Part No": "ME011282", "Material Description": "RUBBER SEAL, ROCKER COVER BOLT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 710.0, "Jun-2026": 710.0, "Jul-2026": 710.0, "Aug-2026": 710.0, "Sep-2026": 710.0, "Oct-2026": 710.0, "Total_Forecast": 4260.0}, {"Plant_Code": "1153", "Part No": "IA309482", "Material Description": "HANDLE ASSY REGULATOR", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 709.0, "Jun-2026": 709.0, "Jul-2026": 709.0, "Aug-2026": 709.0, "Sep-2026": 709.0, "Oct-2026": 709.0, "Total_Forecast": 4254.0}, {"Plant_Code": "1152", "Part No": "ID301958", "Material Description": "FUEL STRAINER (MAV COWL)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 707.33, "Jun-2026": 707.33, "Jul-2026": 707.33, "Aug-2026": 707.33, "Sep-2026": 707.33, "Oct-2026": 707.33, "Total_Forecast": 4244.0}, {"Plant_Code": "1110", "Part No": "23613164", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 706.67, "Jun-2026": 706.67, "Jul-2026": 706.67, "Aug-2026": 706.67, "Sep-2026": 706.67, "Oct-2026": 706.67, "Total_Forecast": 4240.0}, {"Plant_Code": "1110", "Part No": "ME011227", "Material Description": "LOCK,VALVE SPRING RETAINER", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 700.0, "Jun-2026": 700.0, "Jul-2026": 700.0, "Aug-2026": 700.0, "Sep-2026": 700.0, "Oct-2026": 700.0, "Total_Forecast": 4200.0}, {"Plant_Code": "1153", "Part No": "ID304912", "Material Description": "BOLT M12X1.25X35", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 700.0, "Jun-2026": 700.0, "Jul-2026": 700.0, "Aug-2026": 700.0, "Sep-2026": 700.0, "Oct-2026": 700.0, "Total_Forecast": 4200.0}, {"Plant_Code": "1153", "Part No": "MF520016", "Material Description": "O-RING (22.1) (7495)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 700.0, "Jun-2026": 700.0, "Jul-2026": 700.0, "Aug-2026": 700.0, "Sep-2026": 700.0, "Oct-2026": 700.0, "Total_Forecast": 4200.0}, {"Plant_Code": "1155", "Part No": "2221849613", "Material Description": "O-RING", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 700.0, "Jun-2026": 700.0, "Jul-2026": 700.0, "Aug-2026": 700.0, "Sep-2026": 700.0, "Oct-2026": 700.0, "Total_Forecast": 4200.0}, {"Plant_Code": "1155", "Part No": "MB394519", "Material Description": "KNOB INSIDE LOCK", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 700.0, "Jun-2026": 700.0, "Jul-2026": 700.0, "Aug-2026": 700.0, "Sep-2026": 700.0, "Oct-2026": 700.0, "Total_Forecast": 4200.0}, {"Plant_Code": "1152", "Part No": "IE332174", "Material Description": "Urea level sensor Filter", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 698.67, "Jun-2026": 698.67, "Jul-2026": 698.67, "Aug-2026": 698.67, "Sep-2026": 698.67, "Oct-2026": 698.67, "Total_Forecast": 4192.0}, {"Plant_Code": "1152", "Part No": "2224063076", "Material Description": "OIL FILTER KIT, WITH CAP O-RING", "Demand_Class": "Lumpy", "Best_Model": "Naive", "May-2026": 697.0, "Jun-2026": 697.0, "Jul-2026": 697.0, "Aug-2026": 697.0, "Sep-2026": 697.0, "Oct-2026": 697.0, "Total_Forecast": 4182.0}, {"Plant_Code": "1153", "Part No": "ID309848", "Material Description": "POLY V BELT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 694.33, "Jun-2026": 694.33, "Jul-2026": 694.33, "Aug-2026": 694.33, "Sep-2026": 694.33, "Oct-2026": 694.33, "Total_Forecast": 4166.0}, {"Plant_Code": "1153", "Part No": "MB395123", "Material Description": "RUBBER ASSY.SIDE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 693.67, "Jun-2026": 693.67, "Jul-2026": 693.67, "Aug-2026": 693.67, "Sep-2026": 693.67, "Oct-2026": 693.67, "Total_Forecast": 4162.0}, {"Plant_Code": "1110", "Part No": "23582351", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 693.33, "Jun-2026": 693.33, "Jul-2026": 693.33, "Aug-2026": 693.33, "Sep-2026": 693.33, "Oct-2026": 693.33, "Total_Forecast": 4160.0}, {"Plant_Code": "1110", "Part No": "23613162", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 693.33, "Jun-2026": 693.33, "Jul-2026": 693.33, "Aug-2026": 693.33, "Sep-2026": 693.33, "Oct-2026": 693.33, "Total_Forecast": 4160.0}, {"Plant_Code": "1155", "Part No": "MB394511", "Material Description": "HANDLE ASSY DOOR O/S RH", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 692.0, "Jun-2026": 692.0, "Jul-2026": 692.0, "Aug-2026": 692.0, "Sep-2026": 692.0, "Oct-2026": 692.0, "Total_Forecast": 4152.0}, {"Plant_Code": "1155", "Part No": "MF140205", "Material Description": "BOLT M6x1.0x16", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 690.0, "Jun-2026": 690.0, "Jul-2026": 690.0, "Aug-2026": 690.0, "Sep-2026": 690.0, "Oct-2026": 690.0, "Total_Forecast": 4140.0}, {"Plant_Code": "1155", "Part No": "MF472071", "Material Description": "SPLIT PIN (3X30)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 690.0, "Jun-2026": 690.0, "Jul-2026": 690.0, "Aug-2026": 690.0, "Sep-2026": 690.0, "Oct-2026": 690.0, "Total_Forecast": 4140.0}, {"Plant_Code": "1153", "Part No": "ME011934", "Material Description": "HOSE ENGINE BREATHER (L=604)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 687.67, "Jun-2026": 687.67, "Jul-2026": 687.67, "Aug-2026": 687.67, "Sep-2026": 687.67, "Oct-2026": 687.67, "Total_Forecast": 4126.0}, {"Plant_Code": "1110", "Part No": "ID346437", "Material Description": "MAIN FILTER SPIN-ON  EICHER", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 684.0, "Jun-2026": 684.0, "Jul-2026": 684.0, "Aug-2026": 684.0, "Sep-2026": 684.0, "Oct-2026": 684.0, "Total_Forecast": 4104.0}, {"Plant_Code": "1155", "Part No": "ID358352", "Material Description": "GASKET GRAPHITE 9-5 INCH", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 683.0, "Jun-2026": 683.0, "Jul-2026": 683.0, "Aug-2026": 683.0, "Sep-2026": 683.0, "Oct-2026": 683.0, "Total_Forecast": 4098.0}, {"Plant_Code": "1153", "Part No": "IM300458", "Material Description": "Hub Greasing kit 11.10/11.12", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 681.0, "Jun-2026": 681.0, "Jul-2026": 681.0, "Aug-2026": 681.0, "Sep-2026": 681.0, "Oct-2026": 681.0, "Total_Forecast": 4086.0}, {"Plant_Code": "1153", "Part No": "MB308935", "Material Description": "COLLAR BOLT 12 X 1 X 35  (1", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 680.0, "Jun-2026": 680.0, "Jul-2026": 680.0, "Aug-2026": 680.0, "Sep-2026": 680.0, "Oct-2026": 680.0, "Total_Forecast": 4080.0}, {"Plant_Code": "1155", "Part No": "MF472069", "Material Description": "SPLIT PIN (3X25)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 680.0, "Jun-2026": 680.0, "Jul-2026": 680.0, "Aug-2026": 680.0, "Sep-2026": 680.0, "Oct-2026": 680.0, "Total_Forecast": 4080.0}, {"Plant_Code": "1152", "Part No": "IA302148", "Material Description": "M14X1.5X40 BOLT FLANGE", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 676.67, "Jun-2026": 676.67, "Jul-2026": 676.67, "Aug-2026": 676.67, "Sep-2026": 676.67, "Oct-2026": 676.67, "Total_Forecast": 4060.0}, {"Plant_Code": "1153", "Part No": "IB999846", "Material Description": "CLUTCH REPAIR KIT", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 673.33, "Jun-2026": 673.33, "Jul-2026": 673.33, "Aug-2026": 673.33, "Sep-2026": 673.33, "Oct-2026": 673.33, "Total_Forecast": 4040.0}, {"Plant_Code": "1155", "Part No": "IA308960", "Material Description": "Front Grill Clip", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 673.33, "Jun-2026": 673.33, "Jul-2026": 673.33, "Aug-2026": 673.33, "Sep-2026": 673.33, "Oct-2026": 673.33, "Total_Forecast": 4040.0}, {"Plant_Code": "1110", "Part No": "ID358352", "Material Description": "GASKET GRAPHITE 9-5 INCH", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 671.0, "Jun-2026": 671.0, "Jul-2026": 671.0, "Aug-2026": 671.0, "Sep-2026": 671.0, "Oct-2026": 671.0, "Total_Forecast": 4026.0}, {"Plant_Code": "1110", "Part No": "IA307396", "Material Description": "GROM-SCR", "Demand_Class": "Smooth", "Best_Model": "Naive", "May-2026": 670.0, "Jun-2026": 670.0, "Jul-2026": 670.0, "Aug-2026": 670.0, "Sep-2026": 670.0, "Oct-2026": 670.0, "Total_Forecast": 4020.0}, {"Plant_Code": "1155", "Part No": "ID333234", "Material Description": "GASKET", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 670.0, "Jun-2026": 670.0, "Jul-2026": 670.0, "Aug-2026": 670.0, "Sep-2026": 670.0, "Oct-2026": 670.0, "Total_Forecast": 4020.0}, {"Plant_Code": "1110", "Part No": "23613484", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 668.67, "Jun-2026": 668.67, "Jul-2026": 668.67, "Aug-2026": 668.67, "Sep-2026": 668.67, "Oct-2026": 668.67, "Total_Forecast": 4012.0}, {"Plant_Code": "1153", "Part No": "ID333234", "Material Description": "GASKET", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 666.67, "Jun-2026": 666.67, "Jul-2026": 666.67, "Aug-2026": 666.67, "Sep-2026": 666.67, "Oct-2026": 666.67, "Total_Forecast": 4000.0}, {"Plant_Code": "1153", "Part No": "MF430122", "Material Description": "NUT (10)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 663.33, "Jun-2026": 663.33, "Jul-2026": 663.33, "Aug-2026": 663.33, "Sep-2026": 663.33, "Oct-2026": 663.33, "Total_Forecast": 3980.0}, {"Plant_Code": "1110", "Part No": "23582352", "Material Description": "Unknown", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 663.0, "Jun-2026": 663.0, "Jul-2026": 663.0, "Aug-2026": 663.0, "Sep-2026": 663.0, "Oct-2026": 663.0, "Total_Forecast": 3978.0}, {"Plant_Code": "1155", "Part No": "IM301522", "Material Description": "AIR FILTER SET PRO 1000", "Demand_Class": "Lumpy", "Best_Model": "Moving_Average", "May-2026": 660.33, "Jun-2026": 660.33, "Jul-2026": 660.33, "Aug-2026": 660.33, "Sep-2026": 660.33, "Oct-2026": 660.33, "Total_Forecast": 3962.0}, {"Plant_Code": "1110", "Part No": "ID201751", "Material Description": "NUT FLANGE SELF LOCKING (M8X1.25) -TC", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 660.0, "Jun-2026": 660.0, "Jul-2026": 660.0, "Aug-2026": 660.0, "Sep-2026": 660.0, "Oct-2026": 660.0, "Total_Forecast": 3960.0}, {"Plant_Code": "1110", "Part No": "MF200827", "Material Description": "SCREW", "Demand_Class": "Erratic", "Best_Model": "Naive", "May-2026": 660.0, "Jun-2026": 660.0, "Jul-2026": 660.0, "Aug-2026": 660.0, "Sep-2026": 660.0, "Oct-2026": 660.0, "Total_Forecast": 3960.0}, {"Plant_Code": "1153", "Part No": "IA209911", "Material Description": "BUSHING, SHORT GSL (LCV)", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 660.0, "Jun-2026": 660.0, "Jul-2026": 660.0, "Aug-2026": 660.0, "Sep-2026": 660.0, "Oct-2026": 660.0, "Total_Forecast": 3960.0}, {"Plant_Code": "1152", "Part No": "IA215142", "Material Description": "OIL SEAL,HUB REAR OUTER WHEEL", "Demand_Class": "Smooth", "Best_Model": "Moving_Average", "May-2026": 658.0, "Jun-2026": 658.0, "Jul-2026": 658.0, "Aug-2026": 658.0, "Sep-2026": 658.0, "Oct-2026": 658.0, "Total_Forecast": 3948.0}, {"Plant_Code": "1110", "Part No": "ID350638", "Material Description": "PRIMARY ELEMENT", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 657.67, "Jun-2026": 657.67, "Jul-2026": 657.67, "Aug-2026": 657.67, "Sep-2026": 657.67, "Oct-2026": 657.67, "Total_Forecast": 3946.0}, {"Plant_Code": "1155", "Part No": "IZ300289", "Material Description": "Grey Seal Gasket maker big", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 657.0, "Jun-2026": 657.0, "Jul-2026": 657.0, "Aug-2026": 657.0, "Sep-2026": 657.0, "Oct-2026": 657.0, "Total_Forecast": 3942.0}, {"Plant_Code": "1110", "Part No": "ID200260", "Material Description": "GASKET COMPRESSOR (MCV)", "Demand_Class": "Erratic", "Best_Model": "Moving_Average", "May-2026": 656.33, "Jun-2026": 656.33, "Jul-2026": 656.33, "Aug-2026": 656.33, "Sep-2026": 656.33, "Oct-2026": 656.33, "Total_Forecast": 3938.0}], "months": ["May-2026", "Jun-2026", "Jul-2026", "Aug-2026", "Sep-2026", "Oct-2026"]}
+</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
+const MONTHS = DATA.months;
+const PLANTS = Object.keys(DATA.plants).sort();
+const COLORS = {
+  amber:'#D97F1E', teal:'#0E9E8C', red:'#E0483C', blue:'#2F6FE0',
+  muted:'#5B6577', line:'rgba(18,21,28,0.09)'
+};
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.color = COLORS.muted;
+Chart.defaults.font.size = 11;
+
+document.getElementById('plantCountMeta').textContent = PLANTS.length + ' UNITS';
+
+function fmt(n){
+  if(n === null || n === undefined || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if(abs >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if(abs >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toLocaleString();
+}
+function pct(part, total){ return total ? ((part/total)*100).toFixed(1)+'%' : '0%'; }
+
+/* ---------------- TICKER ---------------- */
+(function buildTicker(){
+  const ex = DATA.executive;
+  const items = [
+    `TOTAL PART-PLANT RECORDS: ${fmt(ex.total_records)}`,
+    `UNIQUE PARTS: ${fmt(ex.unique_parts)}`,
+    `FORECAST-ELIGIBLE: ${fmt(ex.eligible)} (${pct(ex.eligible, ex.total_records)})`,
+    `TOTAL FORECAST VOLUME (6M): ${fmt(ex.total_forecast_units)} UNITS`,
+    `PLANTS ONLINE: ${PLANTS.join(' · ')}`,
+    `LUMPY DEMAND SHARE: ${pct(ex.class_counts['Lumpy']||0, ex.total_records)}`,
+    `NEXT REFRESH: ON NEW SOURCE UPLOAD`
+  ];
+  const track = document.getElementById('tickerTrack');
+  const html = items.map(t=>`<span>${t}</span>`).join('');
+  track.innerHTML = html + html; // duplicate for seamless loop
+})();
+
+/* ================================================================
+   VIEW 1 — EXECUTIVE
+================================================================ */
+function renderExecutive(){
+  const ex = DATA.executive;
+  const el = document.getElementById('view-executive');
+  el.innerHTML = `
+    <div class="view-head">
+      <div>
+        <h2>Executive Overview</h2>
+        <p>Portfolio-wide demand health and forecast output across all ${PLANTS.length} plants, derived from the demand profiling and forecasting engine.</p>
+      </div>
+    </div>
+
+    <div class="grid g-kpis">
+      <div class="card kpi-card">
+        <h3>Unique Parts</h3>
+        <div class="kpi-value">${fmt(ex.unique_parts)}</div>
+        <div class="kpi-delta">across ${PLANTS.length} plants · ${fmt(ex.total_records)} part-plant records</div>
+      </div>
+      <div class="card kpi-card">
+        <h3>Forecast Eligible</h3>
+        <div class="kpi-value teal">${pct(ex.eligible, ex.total_records)}</div>
+        <div class="kpi-delta">${fmt(ex.eligible)} eligible · ${fmt(ex.not_eligible)} excluded (thin history / low volume)</div>
+      </div>
+      <div class="card kpi-card">
+        <h3>6-Month Forecast Volume</h3>
+        <div class="kpi-value amber">${fmt(ex.total_forecast_units)}</div>
+        <div class="kpi-delta">units, May–Oct 2026 combined</div>
+      </div>
+      <div class="card kpi-card">
+        <h3>Lumpy Demand Share</h3>
+        <div class="kpi-value red">${pct(ex.class_counts['Lumpy']||0, ex.total_records)}</div>
+        <div class="kpi-delta">highest-risk demand pattern class</div>
+      </div>
+    </div>
+
+    <div class="grid g-2" style="margin-bottom:16px;">
+      <div class="card">
+        <span class="card-tag">FIG.01</span>
+        <h3>Demand Classification Mix</h3>
+        <div class="sub">Smooth · Erratic · Intermittent · Lumpy (ADI / CV² method)</div>
+        <div class="rack" id="rackClass"></div>
+        <div class="insight"><span class="insight-icon">!</span> <span><b>${pct(ex.class_counts['Lumpy']||0, ex.total_records)}</b> of the portfolio is classified <b>Lumpy</b> — sporadic, high-variance demand that plain averaging forecasts (current method) will systematically under- or over-shoot. These parts need intermittent-demand methods (Croston/SBA), not mean-based forecasts.</span></div>
+      </div>
+      <div class="card">
+        <span class="card-tag">FIG.02</span>
+        <h3>Parts by Plant</h3>
+        <div class="sub">Part-plant record count</div>
+        <canvas id="chartPlantBar" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="grid g-1-2">
+      <div class="card">
+        <span class="card-tag">FIG.03</span>
+        <h3>Top 10 Parts by Forecast</h3>
+        <div class="sub">Total forecasted units, May–Oct 2026</div>
+        <canvas id="chartTop10" height="260"></canvas>
+      </div>
+      <div class="card">
+        <span class="card-tag">FIG.04</span>
+        <h3>6-Month Forecast Trend</h3>
+        <div class="sub">Aggregate forecast volume by month, all plants</div>
+        <canvas id="chartMonthly" height="260"></canvas>
+        <div class="insight"><span class="insight-icon">i</span> <span>The line is flat because the current model repeats a single mean/median value across the whole horizon — it has no month-to-month shape. Worth flagging if the business expects seasonality.</span></div>
+      </div>
+    </div>
+  `;
+
+  // Rack bars for demand class
+  const rack = document.getElementById('rackClass');
+  const classColor = {Smooth:'var(--teal)', Erratic:'var(--blue)', Intermittent:'var(--amber)', Lumpy:'var(--red)', 'No Demand':'var(--text-faint)'};
+  const order = ['Lumpy','No Demand','Erratic','Smooth','Intermittent'];
+  const classesPresent = order.filter(c=>ex.class_counts[c] !== undefined);
+  const maxVal = Math.max(...classesPresent.map(c=>ex.class_counts[c]));
+  rack.innerHTML = classesPresent.map(c=>{
+    const v = ex.class_counts[c];
+    const w = (v/maxVal*100).toFixed(1);
+    return `<div class="rack-row">
+      <div class="rack-label">${c}</div>
+      <div class="rack-track"><div class="rack-fill" style="width:0%; background:${classColor[c]||'var(--text-muted)'}" data-w="${w}"><span>${pct(v, ex.total_records)}</span></div></div>
+      <div class="rack-count">${fmt(v)}</div>
+    </div>`;
+  }).join('');
+  requestAnimationFrame(()=>{
+    rack.querySelectorAll('.rack-fill').forEach(f=>{ f.style.width = f.dataset.w+'%'; });
+  });
+
+  new Chart(document.getElementById('chartPlantBar'), {
+    type:'bar',
+    data:{
+      labels: PLANTS,
+      datasets:[{
+        label:'Parts', data: PLANTS.map(p=>ex.plant_counts[p]),
+        backgroundColor: COLORS.amber, borderRadius:4, maxBarThickness: 46
+      }]
+    },
+    options: baseBarOpts('Plant Code')
+  });
+
+  const top10 = ex.top10;
+  new Chart(document.getElementById('chartTop10'), {
+    type:'bar',
+    data:{
+      labels: top10.map(t=>t['Part No']),
+      datasets:[{
+        label:'Total Forecast', data: top10.map(t=>t['Total_Forecast']),
+        backgroundColor: COLORS.teal, borderRadius:4, maxBarThickness: 28
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        label: (ctx)=> `${fmt(ctx.parsed.x)} units — ${top10[ctx.dataIndex]['Material Description']}`
+      }}},
+      scales:{
+        x:{ grid:{color:COLORS.line}, ticks:{callback:v=>fmt(v)} },
+        y:{ grid:{display:false} }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('chartMonthly'), {
+    type:'line',
+    data:{
+      labels: MONTHS,
+      datasets:[{
+        label:'Forecast Volume', data: MONTHS.map(m=>ex.monthly_totals[m]),
+        borderColor: COLORS.amber, backgroundColor: 'rgba(255,162,58,0.12)',
+        fill:true, tension:0.35, pointBackgroundColor: COLORS.amber, pointRadius:4
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false} },
+        y:{ grid:{color:COLORS.line}, ticks:{callback:v=>fmt(v)} }
+      }
+    }
+  });
+}
+
+function baseBarOpts(xLabel){
+  return {
+    responsive:true,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ grid:{display:false}, title:{display:!!xLabel, text:xLabel, color:COLORS.muted} },
+      y:{ grid:{color:COLORS.line}, ticks:{callback:v=>fmt(v)} }
+    }
+  };
+}
+
+/* ================================================================
+   VIEW 2 — PLANNING
+================================================================ */
+let currentPlant = 'ALL';
+let sortState = { key:'Total_Forecast', dir:-1 };
+
+function renderPlanning(){
+  const el = document.getElementById('view-planning');
+  el.innerHTML = `
+    <div class="view-head">
+      <div>
+        <h2>Planning Workbench</h2>
+        <p>Plant-level demand composition and month-by-month forecast, with a searchable part explorer for planners.</p>
+      </div>
+      <div class="plant-filter" id="plantFilter"></div>
+    </div>
+
+    <div class="grid g-2" style="margin-bottom:16px;">
+      <div class="card">
+        <span class="card-tag">FIG.05</span>
+        <h3 id="planTitle">Monthly Forecast — All Plants</h3>
+        <div class="sub">Units per month, May–Oct 2026</div>
+        <canvas id="chartPlanMonthly" height="220"></canvas>
+      </div>
+      <div class="card">
+        <span class="card-tag">FIG.06</span>
+        <h3>Demand Class Composition</h3>
+        <div class="sub" id="planClassSub">Selected scope</div>
+        <canvas id="chartPlanClass" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="card-tag">FIG.07</span>
+      <h3>Part Explorer</h3>
+      <div class="sub">Top 400 parts by total forecast volume — search, sort, and filter by plant</div>
+      <div class="search-row">
+        <input type="text" id="partSearch" placeholder="Search part no. or description…">
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th data-key="Plant_Code">Plant</th>
+              <th data-key="Part No">Part No</th>
+              <th data-key="Material Description">Description</th>
+              <th data-key="Demand_Class">Class</th>
+              <th data-key="Best_Model">Model</th>
+              ${MONTHS.map(m=>`<th data-key="${m}">${m.split('-')[0]}</th>`).join('')}
+              <th data-key="Total_Forecast">Total</th>
+            </tr>
+          </thead>
+          <tbody id="explorerBody"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // plant filter buttons
+  const pf = document.getElementById('plantFilter');
+  pf.innerHTML = ['ALL', ...PLANTS].map(p=>
+    `<button class="plant-btn ${p===currentPlant?'active':''}" data-plant="${p}">${p==='ALL'?'All Plants':'Plant '+p}</button>`
+  ).join('');
+  pf.querySelectorAll('.plant-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      currentPlant = b.dataset.plant;
+      renderPlanning();
+    });
+  });
+
+  // monthly chart for selected scope
+  let monthlyData, className;
+  if(currentPlant === 'ALL'){
+    monthlyData = MONTHS.map(m=>DATA.executive.monthly_totals[m]);
+    className = DATA.executive.class_counts;
+    document.getElementById('planTitle').textContent = 'Monthly Forecast — All Plants';
+    document.getElementById('planClassSub').textContent = 'All plants combined';
+  } else {
+    const p = DATA.plants[currentPlant];
+    monthlyData = MONTHS.map(m=>p.monthly_forecast[m]);
+    className = p.class_counts;
+    document.getElementById('planTitle').textContent = 'Monthly Forecast — Plant ' + currentPlant;
+    document.getElementById('planClassSub').textContent = 'Plant ' + currentPlant + ' — ' + fmt(p.total_parts) + ' unique parts';
+  }
+
+  new Chart(document.getElementById('chartPlanMonthly'), {
+    type:'bar',
+    data:{ labels: MONTHS, datasets:[{ data: monthlyData, backgroundColor: COLORS.amber, borderRadius:4, maxBarThickness:46 }]},
+    options: baseBarOpts(null)
+  });
+
+  const classColorMap = {Smooth:COLORS.teal, Erratic:COLORS.blue, Intermittent:COLORS.amber, Lumpy:COLORS.red, 'No Demand':'#3a4257'};
+  const classLabels = Object.keys(className);
+  new Chart(document.getElementById('chartPlanClass'), {
+    type:'doughnut',
+    data:{
+      labels: classLabels,
+      datasets:[{ data: classLabels.map(c=>className[c]), backgroundColor: classLabels.map(c=>classColorMap[c]||COLORS.muted), borderColor: '#FFFFFF', borderWidth:2 }]
+    },
+    options:{
+      responsive:true, cutout:'65%',
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:14 } } }
+    }
+  });
+
+  renderExplorerTable();
+  document.getElementById('partSearch').addEventListener('input', renderExplorerTable);
+  el.querySelectorAll('thead th').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      sortState.dir = (sortState.key === key) ? sortState.dir*-1 : -1;
+      sortState.key = key;
+      renderExplorerTable();
+    });
+  });
+}
+
+function renderExplorerTable(){
+  const q = (document.getElementById('partSearch').value || '').toLowerCase();
+  let rows = DATA.explorer.filter(r=>{
+    if(currentPlant !== 'ALL' && String(r.Plant_Code) !== currentPlant) return false;
+    if(!q) return true;
+    return String(r['Part No']).toLowerCase().includes(q) || String(r['Material Description']).toLowerCase().includes(q);
+  });
+  rows.sort((a,b)=>{
+    const k = sortState.key;
+    let av = a[k], bv = b[k];
+    if(typeof av === 'string'){ av = av.toLowerCase(); bv = bv.toLowerCase(); return av < bv ? -1*sortState.dir : av > bv ? 1*sortState.dir : 0; }
+    return (av - bv) * sortState.dir;
+  });
+
+  document.querySelectorAll('#view-planning thead th').forEach(th=>{
+    th.classList.toggle('sorted', th.dataset.key === sortState.key);
+  });
+
+  const body = document.getElementById('explorerBody');
+  if(rows.length === 0){
+    body.innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--text-faint); padding:24px; font-family:var(--font-body);">No parts match this search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.slice(0,150).map(r=>`
+    <tr>
+      <td>${r.Plant_Code}</td>
+      <td>${r['Part No']}</td>
+      <td class="desc">${r['Material Description']}</td>
+      <td><span class="badge ${r.Demand_Class.replace(' ','_')}">${r.Demand_Class}</span></td>
+      <td><span class="badge ${r.Best_Model}">${r.Best_Model === 'Moving_Average' ? 'Mov. Avg' : 'Naive'}</span></td>
+      ${MONTHS.map(m=>`<td>${fmt(r[m])}</td>`).join('')}
+      <td style="color:var(--amber); font-weight:600;">${fmt(r.Total_Forecast)}</td>
+    </tr>
+  `).join('');
+}
+
+/* ================================================================
+   VIEW 3 — FORECAST MODEL / ACCURACY
+================================================================ */
+function renderAccuracy(){
+  const acc = DATA.accuracy;
+  const el = document.getElementById('view-accuracy');
+  const modelKeys = Object.keys(acc.best_model_counts);
+
+  el.innerHTML = `
+    <div class="view-head">
+      <div>
+        <h2>Forecast Model Diagnostics</h2>
+        <p>Which forecasting method won for which parts, and where eligibility cuts off. Note: accuracy metrics (MAPE/RMSE) were computed upstream but not persisted in the exported files — this view reflects model selection outcomes only.</p>
+      </div>
+    </div>
+
+    <div class="grid g-kpis" style="grid-template-columns: repeat(3,1fr); margin-bottom:16px;">
+      <div class="card kpi-card">
+        <h3>Total Records</h3>
+        <div class="kpi-value">${fmt(acc.total_records)}</div>
+        <div class="kpi-delta">part-plant combinations evaluated</div>
+      </div>
+      <div class="card kpi-card">
+        <h3>Eligible for Forecasting</h3>
+        <div class="kpi-value teal">${pct(acc.eligible, acc.total_records)}</div>
+        <div class="kpi-delta">${fmt(acc.eligible)} passed history &amp; volume thresholds</div>
+      </div>
+      <div class="card kpi-card">
+        <h3>Excluded</h3>
+        <div class="kpi-value red">${pct(acc.not_eligible, acc.total_records)}</div>
+        <div class="kpi-delta">${fmt(acc.not_eligible)} — no demand, &lt;6 active months, or &lt;5 units total</div>
+      </div>
+    </div>
+
+    <div class="grid g-2" style="margin-bottom:16px;">
+      <div class="card">
+        <span class="card-tag">FIG.08</span>
+        <h3>Winning Model</h3>
+        <div class="sub">Naive (last non-zero) vs. Moving Average (3-month) — lower MAPE wins per part</div>
+        <canvas id="chartModelSplit" height="230"></canvas>
+      </div>
+      <div class="card">
+        <span class="card-tag">FIG.09</span>
+        <h3>Model Selection by Demand Class</h3>
+        <div class="sub">Which model wins within each demand pattern</div>
+        <canvas id="chartModelByClass" height="230"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="card-tag">FIG.10</span>
+      <h3>Model Selection by Plant</h3>
+      <div class="sub">Naive vs Moving Average split, per plant</div>
+      <canvas id="chartModelByPlant" height="200"></canvas>
+      <div class="insight"><span class="insight-icon">!</span> <span><b>Moving Average wins for ${pct(acc.best_model_counts['Moving_Average']||0, acc.eligible)}</b> of eligible parts, suggesting most demand has some short-term persistence rather than being purely spiky. Still, both candidate models are simple heuristics — no ARIMA/ETS/Prophet or ML model was benchmarked against them, which the BRD's "approved AI models" language implies should exist.</span></div>
+    </div>
+  `;
+
+  new Chart(document.getElementById('chartModelSplit'), {
+    type:'doughnut',
+    data:{
+      labels: modelKeys.map(k=>k==='Moving_Average'?'Moving Average':'Naive'),
+      datasets:[{ data: modelKeys.map(k=>acc.best_model_counts[k]), backgroundColor:[COLORS.amber, '#3a4257'], borderColor:'#FFFFFF', borderWidth:2 }]
+    },
+    options:{ responsive:true, cutout:'60%', plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:14} } } }
+  });
+
+  const classes = Object.keys(acc.model_by_class);
+  new Chart(document.getElementById('chartModelByClass'), {
+    type:'bar',
+    data:{
+      labels: classes,
+      datasets:[
+        { label:'Naive', data: classes.map(c=>acc.model_by_class[c]['Naive']||0), backgroundColor:'#3a4257', borderRadius:4 },
+        { label:'Moving Average', data: classes.map(c=>acc.model_by_class[c]['Moving_Average']||0), backgroundColor: COLORS.amber, borderRadius:4 }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:14} } },
+      scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, grid:{color:COLORS.line}, ticks:{callback:v=>fmt(v)} } }
+    }
+  });
+
+  const plantsList = Object.keys(acc.model_by_plant).sort();
+  new Chart(document.getElementById('chartModelByPlant'), {
+    type:'bar',
+    data:{
+      labels: plantsList,
+      datasets:[
+        { label:'Naive', data: plantsList.map(p=>acc.model_by_plant[p]['Naive']||0), backgroundColor:'#3a4257', borderRadius:4, maxBarThickness:60 },
+        { label:'Moving Average', data: plantsList.map(p=>acc.model_by_plant[p]['Moving_Average']||0), backgroundColor: COLORS.amber, borderRadius:4, maxBarThickness:60 }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:14} } },
+      scales:{ x:{ grid:{display:false} }, y:{ grid:{color:COLORS.line}, ticks:{callback:v=>fmt(v)} } }
+    }
+  });
+}
+
+/* ---------------- TAB SWITCHING ---------------- */
+const tabs = document.querySelectorAll('.tab-btn');
+const views = { executive: renderExecutive, planning: renderPlanning, accuracy: renderAccuracy };
+let rendered = {};
+tabs.forEach(t=>{
+  t.addEventListener('click', ()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    const target = document.getElementById('view-'+t.dataset.view);
+    target.classList.add('active');
+    if(!rendered[t.dataset.view]){
+      views[t.dataset.view]();
+      rendered[t.dataset.view] = true;
+    }
+  });
+});
+
+// initial render
+renderExecutive();
+rendered.executive = true;
+
+</script>
+</body>
+</html>
